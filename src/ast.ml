@@ -16,7 +16,7 @@ type 't prog =
       prop : 't;
       pos : pos;
       op : op;
-      left : 't prog; 
+      left : 't prog;
       right : 't prog;
     }
 and op =
@@ -24,6 +24,7 @@ and op =
   | Sub
   | Mult
   | Div
+  | IDiv
   | Mod
   | LOr
   | LAnd
@@ -46,6 +47,7 @@ and string_of_op op : string = match op with
   | Sub -> "-"
   | Mult -> "*"
   | Div -> "/"
+  | IDiv -> "//"
   | Mod -> "%"
   | LOr -> "||"
   | LAnd -> "&&"
