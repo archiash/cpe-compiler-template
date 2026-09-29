@@ -16,14 +16,18 @@ type 't prog =
       prop : 't;
       pos : pos;
       op : op;
-      left : 't prog;
+      left : 't prog; 
       right : 't prog;
     }
 and op =
   | Add
+  | Sub
   | Mult
+  | Div
+  | Mod
   | LOr
   | LAnd
+  (* Lack of Integer Division and Comparasion Expression*)
 
 let prop_of_prog(prog : 't prog) : 't = match prog with
   | IntLit r -> r.prop
@@ -39,6 +43,9 @@ let rec string_of_prog prog : string = match prog with
         ^ ")"
 and string_of_op op : string = match op with
   | Add -> "+"
+  | Sub -> "-"
   | Mult -> "*"
+  | Div -> "/"
+  | Mod -> "%"
   | LOr -> "||"
   | LAnd -> "&&"
