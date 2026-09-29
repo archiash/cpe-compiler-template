@@ -61,7 +61,24 @@ let rec typecheck_prog(p : unit prog) : ty prog option =
     )
     | _ -> None
   )
-  | BinExpr ({op = Div; _} as r) -> None
+  | BinExpr ({op = Div; _} as r) -> (
+    match (typecheck_prog r.left, typecheck_prog r.right) with
+    | (Some left', Some right') -> (
+        match (prop_of_prog left', prop_of_prog right') with
+        | (Int, Int) -> Some (BinExpr {r with
+            prop = Double;
+            left = left';
+            right = right';
+          })
+        | (t1, t2) -> prerr_string
+            (string_of_positions r.pos 
+              ^ ": expected int operands, but found "
+              ^ string_of_type t1 ^ ", "
+              ^ string_of_type t2 ^ "\n");
+          None
+    )
+    | _ -> None
+  )
   | BinExpr ({op = IDiv; _} as r) -> (
     match (typecheck_prog r.left, typecheck_prog r.right) with
     | (Some left', Some right') -> (
