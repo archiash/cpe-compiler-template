@@ -22,11 +22,47 @@ let rec typecheck_prog(p : unit prog) : ty prog option =
   | BoolLit r -> Some (BoolLit {r with prop = Bool})
   | BinExpr ({op = Add; _} as r)
   | BinExpr ({op = Sub; _} as r)
-  | BinExpr ({op = Div; _} as r)
   | BinExpr ({op = Mult; _} as r) -> (
     (* at initial child type is unknown*)
     (* so we typecheck it to know result which maybe None or Some type*)
     (* this case is Some Int so we replace it with Int instead*)
+    match (typecheck_prog r.left, typecheck_prog r.right) with
+    | (Some left', Some right') -> (
+        match (prop_of_prog left', prop_of_prog right') with
+        | (Int, Int) -> Some (BinExpr {r with
+            prop = Int;
+            left = left';
+            right = right';
+          })
+        | (t1, t2) -> prerr_string
+            (string_of_positions r.pos 
+              ^ ": expected int operands, but found "
+              ^ string_of_type t1 ^ ", "
+              ^ string_of_type t2 ^ "\n");
+          None
+    )
+    | _ -> None
+  )
+  | BinExpr ({op = Mod; _} as r) -> (
+    match (typecheck_prog r.left, typecheck_prog r.right) with
+    | (Some left', Some right') -> (
+        match (prop_of_prog left', prop_of_prog right') with
+        | (Int, Int) -> Some (BinExpr {r with
+            prop = Int;
+            left = left';
+            right = right';
+          })
+        | (t1, t2) -> prerr_string
+            (string_of_positions r.pos 
+              ^ ": expected int operands, but found "
+              ^ string_of_type t1 ^ ", "
+              ^ string_of_type t2 ^ "\n");
+          None
+    )
+    | _ -> None
+  )
+  | BinExpr ({op = Div; _} as r) -> None
+  | BinExpr ({op = IDiv; _} as r) -> (
     match (typecheck_prog r.left, typecheck_prog r.right) with
     | (Some left', Some right') -> (
         match (prop_of_prog left', prop_of_prog right') with
