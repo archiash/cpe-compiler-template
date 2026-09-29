@@ -34,6 +34,11 @@ let rec typecheck_prog(p : unit prog) : ty prog option =
             left = left';
             right = right';
           })
+        | (Double, Double) -> Some (BinExpr {r with
+            prop = Double;
+            left = left';
+            right = right';
+          })
         | (t1, t2) -> prerr_string
             (string_of_positions r.pos 
               ^ ": expected int operands, but found "
@@ -66,6 +71,11 @@ let rec typecheck_prog(p : unit prog) : ty prog option =
     | (Some left', Some right') -> (
         match (prop_of_prog left', prop_of_prog right') with
         | (Int, Int) -> Some (BinExpr {r with
+            prop = Double;
+            left = left';
+            right = right';
+          })
+        | (Double, Double) -> Some (BinExpr {r with
             prop = Double;
             left = left';
             right = right';
