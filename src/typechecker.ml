@@ -32,8 +32,7 @@ let type_of_binop (op : op) (left_ty : ty) (right_ty : ty) : (ty, string) result
   | Mod, Double, Int -> Ok Double
   | (Add | Sub | Mult | Div | IntDiv | Mod), _, _ -> Error "int"
 
-  | (LOr | LAnd), Bool, Bool -> Ok Bool
-  | (Eq | Neq), Bool, Bool -> Ok Bool
+  | (LOr | LAnd | Eq | Neq), Bool, Bool -> Ok Bool
   | (Eq | Neq | Lt | Leq | Gt | Geq), Int, Int -> Ok Bool
   | (Eq | Neq | Lt | Leq | Gt | Geq), Double, Double -> Ok Bool
   | (LOr | LAnd | Eq | Neq | Lt | Leq | Gt | Geq), _, _ -> Error "bool"
@@ -48,6 +47,9 @@ let rec typecheck_prog (p : unit prog) : ty prog option =
   match p with
   | IntLit r -> Some (IntLit { r with prop = Int })
   | BoolLit r -> Some (BoolLit { r with prop = Bool })
+  | DoubleLit r -> Some (DoubleLit { r with prop = Double })
+  | CharLit r -> Some (CharLit { r with prop = Char })
+  | UnitLit r -> Some (UnitLit { r with prop = Unit })
   | BinExpr r -> (
       match typecheck_prog r.left, typecheck_prog r.right with
       | Some left_prog, Some right_prog -> (
