@@ -53,9 +53,10 @@ and op =
   | Leq
   | Lt
   | Gt
+  | StringConcat
 and unop =
   | Neg
-
+  
 let prop_of_prog (prog : 't prog) : 't =
   match prog with
   | IntLit r -> r.prop
@@ -95,6 +96,7 @@ and string_of_op op : string =
   | Geq -> ">="
   | Lt -> "<"
   | Gt -> ">"
+  | StringConcat -> "++"
 
 and string_of_unop op : string =
   match op with

@@ -10,17 +10,23 @@ open Ast
 %token TRUE "true"
 %token FALSE "false"
 %token PLUS "+" TIMES "*"
+%token PLUSPLUS "++"
 %token MINUS "-"
 %token DIV "/" INT_DIV "//" MOD "%"
+%token GREATER ">" LESSTHAN "<" GREATEREQUAL ">=" LESSTHANEQUAL "<=" EQUALEQUAL "=="
 %token OROR "||" ANDAND "&&"
 %token LPAREN "(" RPAREN ")"
+%token NOTEQUAL "!="
 %token EOF
 
 (* precedence and associativity declarations *)
-%left OROR
-%left ANDAND
+%right OROR
+%right ANDAND
+%nonassoc EQUALEQUAL NOTEQUAL GREATER LESSTHAN GREATEREQUAL LESSTHANEQUAL
+%right PLUSPLUS
 %left PLUS MINUS
 %left TIMES DIV INT_DIV MOD
+%nonassoc UMINUS
 
 (* starting nonterminal *)
 %start <unit prog> start
@@ -75,6 +81,48 @@ expr:
       left = e1;
       right = e2;
   }}
+  | e1  = expr; "==" ; e2 = expr { BinExpr {
+      prop = ();
+      pos = $loc;
+      op = Eq;
+      left = e1;
+      right = e2;
+  }}
+  | e1  = expr; "!=" ; e2 = expr { BinExpr {
+      prop = ();
+      pos = $loc;
+      op = Neq;
+      left = e1;
+      right = e2;
+  }}  
+  | e1 = expr; ">=" ; e2 = expr { BinExpr{
+      prop = ();
+      pos = $loc;
+      op = Geq;
+      left = e1;
+      right = e2;
+  }}
+  | e1 = expr; "<=" ; e2 = expr { BinExpr{
+      prop = ();
+      pos = $loc;
+      op = Leq;
+      left = e1;
+      right = e2;
+  }}
+  | e1 = expr; ">" ; e2 = expr { BinExpr{
+      prop = ();
+      pos = $loc;
+      op = Gt;
+      left = e1;
+      right = e2;
+  }}
+  | e1 = expr; "<" ; e2 = expr { BinExpr{
+      prop = ();
+      pos = $loc;
+      op = Lt;
+      left = e1;
+      right = e2;
+  }}
   | e1 = expr; "||"; e2 = expr { BinExpr {
       prop = ();
       pos = $loc;
@@ -88,6 +136,19 @@ expr:
       op = LAnd;
       left = e1;
       right = e2;
+    }}
+  | e1 = expr; "++"; e2 = expr { BinExpr {
+      prop = ();
+      pos = $loc;
+      op = StringConcat;
+      left = e1;
+      right = e2;
+    }}
+  | "-"; e1 = expr %prec UMINUS { UnaryExpr {
+      prop = ();
+      pos = $loc;
+      op = Neg;
+      operand = e1;
     }}
   | "true" { BoolLit {
       prop = ();
