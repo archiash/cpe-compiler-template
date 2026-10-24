@@ -22,8 +22,8 @@ type 't prog =
       value : char;
     }
   | UnitLit of {
-    prop : 't;
-    pos : pos;
+      prop : 't;
+      pos : pos;
   }
   | BinExpr of {
       prop : 't;
@@ -38,6 +38,30 @@ type 't prog =
       op : unop;
       operand : 't prog;
     }
+  | StringLit of {
+      prop: 't;
+      pos: pos;
+      value: string;
+  }
+  | Var of {
+      prop: 't;
+      pos: pos;
+      name: string;
+  }
+  | If of {
+      prop: 't;
+      pos: pos;
+      condition: 't prog;
+      consequent: 't prog;
+      alternative: 't prog;
+  }
+  | Let of {
+      prop: 't;
+      pos: pos;
+      name: string;
+      value: 't prog;
+      body: 't prog;
+  }
 and op =
   | Add
   | Sub
@@ -56,7 +80,7 @@ and op =
   | StringConcat
 and unop =
   | Neg
-  
+
 let prop_of_prog (prog : 't prog) : 't =
   match prog with
   | IntLit r -> r.prop
@@ -66,7 +90,10 @@ let prop_of_prog (prog : 't prog) : 't =
   | UnitLit r -> r.prop
   | BinExpr r -> r.prop
   | UnaryExpr r -> r.prop
-
+  | StringLit r -> r.prop
+  | Var r -> r.prop
+  | If r -> r.prop
+  | Let r -> r.prop
 let rec string_of_prog prog : string =
   match prog with
   | IntLit r -> "(" ^ string_of_int r.value ^ ")"
@@ -79,6 +106,10 @@ let rec string_of_prog prog : string =
       ^ String.concat " " [string_of_op r.op; string_of_prog r.left; string_of_prog r.right]
       ^ ")"
   | UnaryExpr r -> "(" ^ string_of_unop r.op ^ string_of_prog r.operand ^ ")"
+  | StringLit r -> "\"" ^ r.value ^ "\""
+  | Var r -> r.name
+  | If r -> "(if " ^ string_of_prog r.consequent ^ " then " ^ string_of_prog r.consequent ^ " else " ^ string_of_prog r.alternative ^ ")"
+  | Let r -> "(let " ^ r.name ^ " = " ^ string_of_prog r.value ^ " in " ^ string_of_prog r.body ^ ")"
 
 and string_of_op op : string =
   match op with

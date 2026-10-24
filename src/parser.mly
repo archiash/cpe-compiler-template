@@ -7,6 +7,9 @@ open Ast
 
 (* token declarations *)
 %token <int> INT_LIT
+%token <string> STRING_LIT
+%token <string> IDENT
+
 %token TRUE "true"
 %token FALSE "false"
 %token PLUS "+" TIMES "*"
@@ -17,9 +20,14 @@ open Ast
 %token OROR "||" ANDAND "&&"
 %token LPAREN "(" RPAREN ")"
 %token NOTEQUAL "!="
+
+%token IF "if" THEN "then" ELSE "else"
+%token LET "let" IN "in" ASSIGN "="
 %token EOF
 
 (* precedence and associativity declarations *)
+%right IN
+%nonassoc ELSE
 %right OROR
 %right ANDAND
 %nonassoc EQUALEQUAL NOTEQUAL GREATER LESSTHAN GREATEREQUAL LESSTHANEQUAL
@@ -165,4 +173,34 @@ expr:
       pos = $loc;
       value = n;
     }}
-  | "("; e = expr; ")" { e }
+  | "("; e = expr; ")" { 
+      e 
+    }
+  
+  | s = STRING_LIT { StringLit {
+      prop = ();
+      pos = $loc;
+      value = s;
+    }}
+
+  | id = IDENT { Var {
+      prop = ();
+      pos = $loc;
+      name = id;
+    }}
+
+  | "if"; cond = expr; "then"; e1 = expr; "else"; e2 = expr { If {
+      prop = ();
+      pos = $loc;
+      condition = cond;
+      consequent = e1;
+      alternative = e2;
+    }}
+
+  | "let"; id = IDENT; "="; e1 = expr; "in"; e2 = expr { Let {
+      prop = ();
+      pos = $loc;
+      name = id;
+      value = e1;
+      body = e2;
+    }}
