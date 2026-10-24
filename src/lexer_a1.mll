@@ -17,7 +17,7 @@ let symbols = "*" | "/" | "//" | "%" | "+" | "-" | "::" | "++" | "==" | "<" | "<
 let digit = ['0'-'9']
 let letter = ['a'-'z' 'A'-'Z' '_']
 let upper_ident = ['A' - 'Z'] (letter | digit)*
-let lower_ident = ['a' - 'z'] (letter | digit)*
+let lower_ident = ['a' - 'z'] (letter | digit)* 
 let escape   = '\\' ['\\' '\'' '"' 'n' 'r' 't' 'b'] 
 let bool_lit = "True" | "False"
 let int_lit = digit+
@@ -26,9 +26,11 @@ let float_lit = digit+ '.' digit+
 (** lexing rules **)
 rule read = parse
   | whitespace { read lexbuf }
-  | symbols as s { Symbol(s)}
-  | keywords as k { Keyword(k)}
+  | symbols as s { Symbol(s) }
+  | keywords as k { Keyword(k) }
+  | lower_ident as lident { VariableName(lindent) }
+  | upper_ident as uident { TypeOrContructorName(uident) }
   | int_lit as i {IntLit (int_of_string i) }
-  | float_lit as f {FloatLit (float_of_string f)}
+  | float_lit as f {FloatLit (float_of_string f) }
   | eof { EOF }
   | _ { error (Lexing.lexeme lexbuf) lexbuf }
