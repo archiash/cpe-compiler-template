@@ -19,20 +19,34 @@ let letter = ['a'-'z' 'A'-'Z' '_']
 let upper_ident = ['A' - 'Z'] (letter | digit)*
 let lower_ident = ['a' - 'z'] (letter | digit)*
 let types = "Bool" | "Int" | "Double" | "Char"
-let escape   = '\\' ['\\' '\'' '"' 'n' 'r' 't' 'b'] 
 let bool_lit = "True" | "False"
 let int_lit = digit+
 let float_lit = digit+ '.' digit+
+let character = [^ '\\' '\'' '\r' '\n']
 
 (** lexing rules **)
 rule read = parse
   | whitespace { read lexbuf }
   | symbols as s { Symbol(s) }
   | keywords as k { Keyword(k) }
-  | lower_ident as lident { VariableName(lindent) }
-  | upper_ident as uident { TypeOrContructorName(uident) }
-  | types as t { TypeOrContructorName(t) }
+  | lower_ident as lident { VariableName(lident) }
+  | upper_ident as uident { TypeOrConstructorName(uident) }
+  | types as t { TypeOrConstructorName(t) }
   | int_lit as i { IntLit (int_of_string i) }
   | float_lit as f { FloatLit (float_of_string f) }
+  | '\'' (character as c) '\'' { CharLit c }
+  | '\'' '\\' (_ as escape) '\'' { 
+      let c = match escape with
+        | 'n' -> '\n'
+        | 'r' -> '\r'
+        | 't' -> '\t'
+        | 'b' -> '\b'
+        | '\\' -> '\\'
+        | '\'' -> '\''
+        | '"' -> '"'
+        | _ -> failwith "Invalid escape"
+      in 
+    CharLit c 
+    }
   | eof { EOF }
   | _ { error (Lexing.lexeme lexbuf) lexbuf }
