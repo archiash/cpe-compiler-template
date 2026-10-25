@@ -153,10 +153,10 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
       | None -> None
     )
   | StringLit _ -> failwith "unimplemented"
+  | _ -> None
 
 let typecheck_prog (p : unit prog) : ty prog option =
   typecheck_with_env [] p
-    | _-> None
 
 let typecheck (p : unit prog) : bool =
   match typecheck_prog p with
