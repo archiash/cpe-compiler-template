@@ -214,9 +214,3 @@ condition:
       value = e1;
       body = e2;
     }}
-
-list: 
-  | "[";"]" {EmptyList {
-      prop = ();
-      pos = $loc;
-  }}
