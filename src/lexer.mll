@@ -14,6 +14,7 @@ let line_terminator = '\r' | '\n' | "\r\n"
 let whitespace = (line_terminator | [' ' '\t'])+
 let digit = ['0'-'9']
 let letter = ['a'-'z' 'A'-'Z' '_']
+let float_lit = digit+ '.' digit+
 let ident = ['a' - 'z'] (letter | digit)*
 
 (** lexing rules **)
@@ -37,6 +38,7 @@ rule read = parse
   | "!=" { NOTEQUAL }
   | "=" { ASSIGN }
   | digit+ as x { INT_LIT (int_of_string x) }
+  | float_lit as f { FLOAT_LIT (float_of_string f) }
   | "if" { IF }
   | "then" { THEN }
   | "else" { ELSE }
