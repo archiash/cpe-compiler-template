@@ -174,7 +174,7 @@ expr:
       pos = $loc;
       value = n;
     }}
-  | n = FLOAT_LIT { FLOAT_LIT {
+  | n = FLOAT_LIT { FloatLit {
       prop = ();
       pos = $loc;
       value = n;
