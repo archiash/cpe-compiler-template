@@ -37,6 +37,7 @@ let type_of_binop (op : op) (left_ty : ty) (right_ty : ty) : (ty, string) result
   | (Eq | Neq | Lt | Leq | Gt | Geq), Double, Double -> Ok Bool
   | (LOr | LAnd | Eq | Neq | Lt | Leq | Gt | Geq), _, _ -> Error "bool"
   | StringConcat, _, _ -> failwith "unimplemented"
+  | _-> Error ""
 
 let type_of_unop (op : unop) (operand_ty : ty) : (ty, string) result =
   match op, operand_ty with
@@ -155,6 +156,7 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
 
 let typecheck_prog (p : unit prog) : ty prog option =
   typecheck_with_env [] p
+    | _-> None
 
 let typecheck (p : unit prog) : bool =
   match typecheck_prog p with
