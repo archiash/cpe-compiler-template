@@ -36,6 +36,7 @@ let type_of_binop (op : op) (left_ty : ty) (right_ty : ty) : (ty, string) result
   | (Eq | Neq | Lt | Leq | Gt | Geq), Int, Int -> Ok Bool
   | (Eq | Neq | Lt | Leq | Gt | Geq), Double, Double -> Ok Bool
   | (LOr | LAnd | Eq | Neq | Lt | Leq | Gt | Geq), _, _ -> Error "bool"
+  | _-> Error ""
 
 let type_of_unop (op : unop) (operand_ty : ty) : (ty, string) result =
   match op, operand_ty with
@@ -84,6 +85,7 @@ let rec typecheck_prog (p : unit prog) : ty prog option =
         )
       | None -> None
     )
+    | _-> None
 
 let typecheck (p : unit prog) : bool =
   match typecheck_prog p with

@@ -13,6 +13,7 @@ let string_buf = Buffer.create 256
 let line_terminator = '\r' | '\n' | "\r\n"
 let whitespace = (line_terminator | [' ' '\t'])+
 let digit = ['0'-'9']
+let letter = ['a'-'z' 'A'-'Z' '_']
 let ident = ['a' - 'z'] (letter | digit)*
 
 (** lexing rules **)
@@ -42,6 +43,6 @@ rule read = parse
   | "in" { IN }
   | "true" { TRUE }
   | "false" { FALSE }
-  | ident as i { IDENT }
+  | ident as i { IDENT (i)}
   | eof { EOF }
   | _ { error (Lexing.lexeme lexbuf) lexbuf }
