@@ -35,6 +35,7 @@ rule read = parse
   | "(" { LPAREN }
   | ")" { RPAREN }
   | "!=" { NOTEQUAL }
+  | "=" { ASSIGN }
   | digit+ as x { INT_LIT (int_of_string x) }
   | "if" { IF }
   | "then" { THEN }
