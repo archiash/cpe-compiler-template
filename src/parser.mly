@@ -49,6 +49,11 @@ prog:
   | e = expr { e }
 
 expr:
+  | e = literal; { e }
+  | e = condition; { e }
+  | "("; e = expr; ")" { 
+      e 
+    }
   | e1 = expr; "+"; e2 = expr { BinExpr {
       prop = ();
       pos = $loc;
@@ -159,6 +164,14 @@ expr:
       op = Neg;
       operand = e1;
     }}
+
+  | id = IDENT { Var {
+      prop = ();
+      pos = $loc;
+      name = id;
+    }}
+
+literal:
   | "true" { BoolLit {
       prop = ();
       pos = $loc;
@@ -179,22 +192,13 @@ expr:
       pos = $loc;
       value = n;
     }}
-  | "("; e = expr; ")" { 
-      e 
-    }
-  
   | s = STRING_LIT { StringLit {
       prop = ();
       pos = $loc;
       value = s;
     }}
 
-  | id = IDENT { Var {
-      prop = ();
-      pos = $loc;
-      name = id;
-    }}
-
+condition:
   | "if"; cond = expr; "then"; e1 = expr; "else"; e2 = expr { If {
       prop = ();
       pos = $loc;
@@ -210,3 +214,9 @@ expr:
       value = e1;
       body = e2;
     }}
+
+list: 
+  | "[";"]" {EmptyList {
+      prop = ();
+      pos = $loc;
+  }}
