@@ -101,7 +101,16 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
         )
       | None -> None
     )
-  | Var _ | If _ | Let _ | StringLit _ -> failwith "unimplemented"
+  | Var r -> (
+      match List.assoc_opt r.name env with
+      | Some ty -> Some (Var { r with prop = ty })
+      | None ->
+          prerr_string
+            (string_of_positions r.pos
+            ^ ": '" ^ r.name ^ "' is not defined\n");
+          None
+    )
+  | If _ | Let _ | StringLit _ -> failwith "unimplemented"
 
 let typecheck_prog (p : unit prog) : ty prog option =
   typecheck_with_env [] p
