@@ -110,7 +110,37 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
             ^ ": '" ^ r.name ^ "' is not defined\n");
           None
     )
-  | If _ | Let _ | StringLit _ -> failwith "unimplemented"
+  | If r -> (
+      match typecheck_with_env env r.condition with
+      | Some cond_prog -> (
+          let cond_ty = prop_of_prog cond_prog in
+          if cond_ty <> Bool then (
+            prerr_string
+              (string_of_positions (pos_of_prog cond_prog)
+              ^ ": expected bool condition, but found "
+              ^ string_of_type cond_ty ^ "\n");
+            None
+          ) else (
+            match typecheck_with_env env r.consequent, typecheck_with_env env r.alternative with
+            | Some cons_prog, Some alt_prog ->
+                let cons_ty = prop_of_prog cons_prog in
+                let alt_ty = prop_of_prog alt_prog in
+                if cons_ty = alt_ty then
+                  Some (If { r with prop = cons_ty; condition = cond_prog; consequent = cons_prog; alternative = alt_prog })
+                else (
+                  prerr_string
+                    (string_of_positions r.pos
+                    ^ ": expected branches to have same type, but found "
+                    ^ string_of_type cons_ty ^ ", "
+                    ^ string_of_type alt_ty ^ "\n");
+                  None
+                )
+            | _ -> None
+          )
+        )
+      | None -> None
+    )
+  | Let _ | StringLit _ -> failwith "unimplemented"
 
 let typecheck_prog (p : unit prog) : ty prog option =
   typecheck_with_env [] p
