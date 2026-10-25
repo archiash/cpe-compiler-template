@@ -19,6 +19,10 @@ rule read = parse
   | whitespace { read lexbuf }
   | "+" { PLUS }
   | "*" { TIMES }
+  | "-" { MINUS }
+  | "/" { DIV }
+  | "//" { INT_DIV }
+  | "%" { MOD }
   | "||" { OROR }
   | "&&" { ANDAND }
   | "(" { LPAREN }
