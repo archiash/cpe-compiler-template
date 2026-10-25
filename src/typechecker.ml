@@ -36,6 +36,7 @@ let type_of_binop (op : op) (left_ty : ty) (right_ty : ty) : (ty, string) result
   | (Eq | Neq | Lt | Leq | Gt | Geq), Int, Int -> Ok Bool
   | (Eq | Neq | Lt | Leq | Gt | Geq), Double, Double -> Ok Bool
   | (LOr | LAnd | Eq | Neq | Lt | Leq | Gt | Geq), _, _ -> Error "bool"
+  | StringConcat, _, _ -> failwith "unimplemented"
 
 let type_of_unop (op : unop) (operand_ty : ty) : (ty, string) result =
   match op, operand_ty with
@@ -43,7 +44,23 @@ let type_of_unop (op : unop) (operand_ty : ty) : (ty, string) result =
   | Neg, Double -> Ok Double
   | Neg, _ -> Error "int"
 
-let rec typecheck_prog (p : unit prog) : ty prog option =
+let pos_of_prog (p : 't prog) : pos =
+  match p with
+  | IntLit r -> r.pos
+  | BoolLit r -> r.pos
+  | DoubleLit r -> r.pos
+  | CharLit r -> r.pos
+  | UnitLit r -> r.pos
+  | BinExpr r -> r.pos
+  | UnaryExpr r -> r.pos
+  | StringLit r -> r.pos
+  | Var r -> r.pos
+  | If r -> r.pos
+  | Let r -> r.pos
+
+type env = (string * ty) list
+
+let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
   match p with
   | IntLit r -> Some (IntLit { r with prop = Int })
   | BoolLit r -> Some (BoolLit { r with prop = Bool })
@@ -51,7 +68,7 @@ let rec typecheck_prog (p : unit prog) : ty prog option =
   | CharLit r -> Some (CharLit { r with prop = Char })
   | UnitLit r -> Some (UnitLit { r with prop = Unit })
   | BinExpr r -> (
-      match typecheck_prog r.left, typecheck_prog r.right with
+      match typecheck_with_env env r.left, typecheck_with_env env r.right with
       | Some left_prog, Some right_prog -> (
           let left_ty = prop_of_prog left_prog in
           let right_ty = prop_of_prog right_prog in
@@ -69,7 +86,7 @@ let rec typecheck_prog (p : unit prog) : ty prog option =
       | _ -> None
     )
   | UnaryExpr r -> (
-      match typecheck_prog r.operand with
+      match typecheck_with_env env r.operand with
       | Some operand_prog -> (
           let operand_ty = prop_of_prog operand_prog in
           match type_of_unop r.op operand_ty with
@@ -84,6 +101,10 @@ let rec typecheck_prog (p : unit prog) : ty prog option =
         )
       | None -> None
     )
+  | Var _ | If _ | Let _ | StringLit _ -> failwith "unimplemented"
+
+let typecheck_prog (p : unit prog) : ty prog option =
+  typecheck_with_env [] p
 
 let typecheck (p : unit prog) : bool =
   match typecheck_prog p with
