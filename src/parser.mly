@@ -7,6 +7,7 @@ open Ast
 
 (* token declarations *)
 %token <int> INT_LIT
+%token <float> FLOAT_LIT
 %token <string> STRING_LIT
 %token <string> IDENT
 
@@ -169,6 +170,11 @@ expr:
       value = false;
     }}
   | n = INT_LIT { IntLit {
+      prop = ();
+      pos = $loc;
+      value = n;
+    }}
+  | n = FLOAT_LIT { FLOAT_LIT {
       prop = ();
       pos = $loc;
       value = n;
