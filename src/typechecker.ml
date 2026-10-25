@@ -5,7 +5,7 @@ type ty =
   | Int
   | Bool
   | Char
-  | Double
+  | Float
   | Unit
   | List of ty
   | Pair of ty * ty
@@ -16,7 +16,7 @@ let rec string_of_type (t : ty) : string =
   | Int -> "int"
   | Bool -> "bool"
   | Char -> "char"
-  | Double -> "double"
+  | Float -> "float"
   | Unit -> "()"
   | List a -> "[" ^ string_of_type a ^ "]"
   | Pair (a, b) -> "(" ^ string_of_type a ^ ", " ^ string_of_type b ^ ")"
@@ -25,30 +25,30 @@ let rec string_of_type (t : ty) : string =
 let type_of_binop (op : op) (left_ty : ty) (right_ty : ty) : (ty, string) result =
   match op, left_ty, right_ty with
   | (Add | Sub | Mult), Int, Int -> Ok Int
-  | (Add | Sub | Mult), (Double | Int), (Double | Int) -> Ok Double
-  | Div, (Double | Int), (Double | Int) -> Ok Double
-  | IntDiv, (Double | Int), Int -> Ok Int
+  | (Add | Sub | Mult), (Float | Int), (Float | Int) -> Ok Float
+  | Div, (Float | Int), (Float | Int) -> Ok Float
+  | IntDiv, (Float | Int), Int -> Ok Int
   | Mod, Int, Int -> Ok Int
-  | Mod, Double, Int -> Ok Double
+  | Mod, Float, Int -> Ok Float
   | (Add | Sub | Mult | Div | IntDiv | Mod), _, _ -> Error "int"
 
   | (LOr | LAnd | Eq | Neq), Bool, Bool -> Ok Bool
   | (Eq | Neq | Lt | Leq | Gt | Geq), Int, Int -> Ok Bool
-  | (Eq | Neq | Lt | Leq | Gt | Geq), Double, Double -> Ok Bool
+  | (Eq | Neq | Lt | Leq | Gt | Geq), Float, Float -> Ok Bool
   | (LOr | LAnd | Eq | Neq | Lt | Leq | Gt | Geq), _, _ -> Error "bool"
   | StringConcat, _, _ -> failwith "unimplemented"
 
 let type_of_unop (op : unop) (operand_ty : ty) : (ty, string) result =
   match op, operand_ty with
   | Neg, Int -> Ok Int
-  | Neg, Double -> Ok Double
+  | Neg, Float -> Ok Float
   | Neg, _ -> Error "int"
 
 let pos_of_prog (p : 't prog) : pos =
   match p with
   | IntLit r -> r.pos
   | BoolLit r -> r.pos
-  | DoubleLit r -> r.pos
+  | FloatLit r -> r.pos
   | CharLit r -> r.pos
   | UnitLit r -> r.pos
   | BinExpr r -> r.pos
@@ -64,7 +64,7 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
   match p with
   | IntLit r -> Some (IntLit { r with prop = Int })
   | BoolLit r -> Some (BoolLit { r with prop = Bool })
-  | DoubleLit r -> Some (DoubleLit { r with prop = Double })
+  | FloatLit r -> Some (FloatLit { r with prop = Float })
   | CharLit r -> Some (CharLit { r with prop = Char })
   | UnitLit r -> Some (UnitLit { r with prop = Unit })
   | BinExpr r -> (
