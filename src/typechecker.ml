@@ -140,7 +140,18 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
         )
       | None -> None
     )
-  | Let _ | StringLit _ -> failwith "unimplemented"
+  | Let r -> (
+      match typecheck_with_env env r.value with
+      | Some val_prog ->
+          let val_ty = prop_of_prog val_prog in
+          let env' = (r.name, val_ty) :: env in
+          (match typecheck_with_env env' r.body with
+           | Some body_prog ->
+               Some (Let { r with prop = prop_of_prog body_prog; value = val_prog; body = body_prog })
+           | None -> None)
+      | None -> None
+    )
+  | StringLit _ -> failwith "unimplemented"
 
 let typecheck_prog (p : unit prog) : ty prog option =
   typecheck_with_env [] p
