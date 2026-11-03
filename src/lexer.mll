@@ -24,6 +24,8 @@ rule read = parse
   | whitespace { read lexbuf }
   | digit+ as x { INT_LIT (int_of_string x) }
   | float_lit as f { FLOAT_LIT (float_of_string f) }
+  | '#' [^ '\r' '\n' ]* { read lexbuf }
+  | "(*" { read_comment lexbuf }
   (* | "def" { DEF }
   | "data" { DATA }
   | "type" { TYPE }
@@ -89,7 +91,7 @@ rule read = parse
   | eof { EOF }
   | _ { error (Lexing.lexeme lexbuf) lexbuf }
 
-  and read_string = parse
+and read_string = parse
   | '"' { STRING_LIT (Buffer.contents string_buf) }
   | '\\' (_ as escape) {       
       let c = match escape with
@@ -109,3 +111,10 @@ rule read = parse
               read_string lexbuf }
   | eof { error "unterminated string literal" lexbuf }
   | _ as c { Buffer.add_char string_buf c; read_string lexbuf }
+
+and read_comment = parse
+  | "*)" { read lexbuf }
+  | "(*" { error "nested comment not allowed" lexbuf }
+  | line_terminator { Lexing.new_line lexbuf; read_comment lexbuf }
+  | eof { error "unterminated comment" lexbuf }
+  | _ { read_comment lexbuf }
