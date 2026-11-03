@@ -62,6 +62,16 @@ type 't prog =
       value: 't prog;
       body: 't prog;
   }
+  | EmptyList of {
+      prop: 't;
+      pos: pos;
+  }
+  | App of {
+    prop: 't;
+    pos: pos;
+    func: 't prog;
+    arg: 't prog;
+  }
 and op =
   | Add
   | Sub
@@ -94,6 +104,9 @@ let prop_of_prog (prog : 't prog) : 't =
   | Var r -> r.prop
   | If r -> r.prop
   | Let r -> r.prop
+  | EmptyList r -> r.prop
+  | App r -> r.prop
+
 let rec string_of_prog prog : string =
   match prog with
   | IntLit r -> "(" ^ string_of_int r.value ^ ")"
@@ -110,6 +123,8 @@ let rec string_of_prog prog : string =
   | Var r -> r.name
   | If r -> "(if " ^ string_of_prog r.consequent ^ " then " ^ string_of_prog r.consequent ^ " else " ^ string_of_prog r.alternative ^ ")"
   | Let r -> "(let " ^ r.name ^ " = " ^ string_of_prog r.value ^ " in " ^ string_of_prog r.body ^ ")"
+  | EmptyList _ -> "[]"
+  | App r -> "(App " ^ string_of_prog r.func ^ " " ^ string_of_prog r.arg ^ ")"
 
 and string_of_op op : string =
   match op with

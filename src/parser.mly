@@ -39,6 +39,10 @@ open Ast
 
 // %token INTEGER "Integer" BOOLEAN "Bool" FLOAT "Double" CHAR "Char"
 
+
+%token LBRACKET "[" RBRACKET "]"
+%token CONS "::"
+
 %token EOF
 
 (* precedence and associativity declarations *)
@@ -47,7 +51,7 @@ open Ast
 %right OROR
 %right ANDAND
 %nonassoc EQUALEQUAL NOTEQUAL GREATER LESSTHAN GREATEREQUAL LESSTHANEQUAL
-%right PLUSPLUS
+%right PLUSPLUS CONS
 %left PLUS MINUS
 %left TIMES DIV INT_DIV MOD
 %nonassoc UMINUS
@@ -63,161 +67,27 @@ start:
 prog:
   | e = expr { e }
 
+simple_expr:
+  | "true" { BoolLit { prop = (); pos = $loc; value = true } }
+  | "false" { BoolLit { prop = (); pos = $loc; value = false } }
+  | n = INT_LIT { IntLit { prop = (); pos = $loc; value = n } }
+  | n = FLOAT_LIT { FloatLit { prop = (); pos = $loc; value = n } }
+  | s = STRING_LIT { StringLit { prop = (); pos = $loc; value = s } }
+  | id = IDENT { Var { prop = (); pos = $loc; name = id } }
+  | "["; "]" { EmptyList { prop = (); pos = $loc } }
+  | "("; e = expr; ")" { e }
+
+app_expr:
+  | e = simple_expr { e }
+  | func = app_expr; arg = simple_expr { App { prop = (); pos = $loc; func = func; arg = arg } }
+
 expr:
-  | e = literal; { e }
-  | e = condition; { e }
-  | "("; e = expr; ")" { 
-      e 
-    }
-  | e1 = expr; "+"; e2 = expr { BinExpr {
+  | e = app_expr { e }
+  
+  | "if"; c = expr; "then"; e1 = expr; "else"; e2 = expr { If {
       prop = ();
       pos = $loc;
-      op = Add;
-      left = e1;
-      right = e2;
-    }}
-  | e1 = expr; "-"; e2 = expr { BinExpr {
-      prop = ();
-      pos = $loc;
-      op = Sub;
-      left = e1;
-      right = e2;}}
-  | e1 = expr; "*"; e2 = expr { BinExpr {
-      prop = ();
-      pos = $loc;
-      op = Mult;
-      left = e1;
-      right = e2;
-    }}
-  | e1 = expr; "/" ; e2 = expr { BinExpr {
-      prop = ();
-      pos = $loc;
-      op = Div;
-      left = e1;
-      right = e2;
-  }}
-  |  e1 = expr; "//"; e2 = expr { BinExpr {
-      prop = ();
-      pos = $loc;
-      op = IntDiv;
-      left = e1;
-      right = e2;
-    }}
-  | e1 = expr; "%" ; e2 = expr { BinExpr {
-      prop = ();
-      pos = $loc;
-      op = Mod;
-      left = e1;
-      right = e2;
-  }}
-  | e1  = expr; "==" ; e2 = expr { BinExpr {
-      prop = ();
-      pos = $loc;
-      op = Eq;
-      left = e1;
-      right = e2;
-  }}
-  | e1  = expr; "!=" ; e2 = expr { BinExpr {
-      prop = ();
-      pos = $loc;
-      op = Neq;
-      left = e1;
-      right = e2;
-  }}  
-  | e1 = expr; ">=" ; e2 = expr { BinExpr{
-      prop = ();
-      pos = $loc;
-      op = Geq;
-      left = e1;
-      right = e2;
-  }}
-  | e1 = expr; "<=" ; e2 = expr { BinExpr{
-      prop = ();
-      pos = $loc;
-      op = Leq;
-      left = e1;
-      right = e2;
-  }}
-  | e1 = expr; ">" ; e2 = expr { BinExpr{
-      prop = ();
-      pos = $loc;
-      op = Gt;
-      left = e1;
-      right = e2;
-  }}
-  | e1 = expr; "<" ; e2 = expr { BinExpr{
-      prop = ();
-      pos = $loc;
-      op = Lt;
-      left = e1;
-      right = e2;
-  }}
-  | e1 = expr; "||"; e2 = expr { BinExpr {
-      prop = ();
-      pos = $loc;
-      op = LOr;
-      left = e1;
-      right = e2;
-    }}
-  | e1 = expr; "&&"; e2 = expr { BinExpr {
-      prop = ();
-      pos = $loc;
-      op = LAnd;
-      left = e1;
-      right = e2;
-    }}
-  | e1 = expr; "++"; e2 = expr { BinExpr {
-      prop = ();
-      pos = $loc;
-      op = StringConcat;
-      left = e1;
-      right = e2;
-    }}
-  | "-"; e1 = expr %prec UMINUS { UnaryExpr {
-      prop = ();
-      pos = $loc;
-      op = Neg;
-      operand = e1;
-    }}
-
-  | id = IDENT { Var {
-      prop = ();
-      pos = $loc;
-      name = id;
-    }}
-
-literal:
-  | "true" { BoolLit {
-      prop = ();
-      pos = $loc;
-      value = true;
-    }}
-  | "false" { BoolLit {
-      prop = ();
-      pos = $loc;
-      value = false;
-    }}
-  | n = INT_LIT { IntLit {
-      prop = ();
-      pos = $loc;
-      value = n;
-    }}
-  | n = FLOAT_LIT { FloatLit {
-      prop = ();
-      pos = $loc;
-      value = n;
-    }}
-  | s = STRING_LIT { StringLit {
-      prop = ();
-      pos = $loc;
-      value = s;
-    }}
-
-condition:
-  | "if"; cond = expr; "then"; e1 = expr; "else"; e2 = expr { If {
-      prop = ();
-      pos = $loc;
-      condition = cond;
+      condition = c;
       consequent = e1;
       alternative = e2;
     }}
@@ -229,3 +99,22 @@ condition:
       value = e1;
       body = e2;
     }}
+
+  | e1 = expr; "+"; e2 = expr { BinExpr { prop = (); pos = $loc; op = Add; left = e1; right = e2 } }
+  | e1 = expr; "-"; e2 = expr { BinExpr { prop = (); pos = $loc; op = Sub; left = e1; right = e2 } }
+  | e1 = expr; "*"; e2 = expr { BinExpr { prop = (); pos = $loc; op = Mult; left = e1; right = e2 } }
+  | e1 = expr; "/"; e2 = expr { BinExpr { prop = (); pos = $loc; op = Div; left = e1; right = e2 } }
+  | e1 = expr; "//"; e2 = expr { BinExpr { prop = (); pos = $loc; op = IntDiv; left = e1; right = e2 } }
+  | e1 = expr; "%"; e2 = expr { BinExpr { prop = (); pos = $loc; op = Mod; left = e1; right = e2 } }
+  | e1 = expr; "=="; e2 = expr { BinExpr { prop = (); pos = $loc; op = Eq; left = e1; right = e2 } }
+  | e1 = expr; "!="; e2 = expr { BinExpr { prop = (); pos = $loc; op = Neq; left = e1; right = e2 } }
+  | e1 = expr; ">="; e2 = expr { BinExpr { prop = (); pos = $loc; op = Geq; left = e1; right = e2 } }
+  | e1 = expr; "<="; e2 = expr { BinExpr { prop = (); pos = $loc; op = Leq; left = e1; right = e2 } }
+  | e1 = expr; ">"; e2 = expr { BinExpr { prop = (); pos = $loc; op = Gt; left = e1; right = e2 } }
+  | e1 = expr; "<"; e2 = expr { BinExpr { prop = (); pos = $loc; op = Lt; left = e1; right = e2 } }
+  | e1 = expr; "||"; e2 = expr { BinExpr { prop = (); pos = $loc; op = LOr; left = e1; right = e2 } }
+  | e1 = expr; "&&"; e2 = expr { BinExpr { prop = (); pos = $loc; op = LAnd; left = e1; right = e2 } }
+  | e1 = expr; "++"; e2 = expr { BinExpr { prop = (); pos = $loc; op = StringConcat; left = e1; right = e2 } }
+  | left = expr; "::"; right = expr { BinExpr { prop = (); pos = $loc; op = StringConcat; left = left; right = right } }
+  
+  | "-"; e1 = expr %prec UMINUS { UnaryExpr { prop = (); pos = $loc; op = Neg; operand = e1 } }
