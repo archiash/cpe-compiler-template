@@ -48,4 +48,26 @@ rule read = parse
   | "false" { FALSE }
   | ident as i { IDENT (i)}
   | eof { EOF }
+  | '"' { Buffer.clear string_buf; read_string lexbuf }
   | _ { error (Lexing.lexeme lexbuf) lexbuf }
+
+  and read_string = parse
+  | '"' { STRING_LIT (Buffer.contents string_buf) }
+  | '\\' (_ as escape) {       
+      let c = match escape with
+        | 'n' -> '\n'
+        | 'r' -> '\r'
+        | 't' -> '\t'
+        | 'b' -> '\b'
+        | '\\' -> '\\'
+        | '\'' -> '\''
+        | '"' -> '"'
+        | _ -> failwith "Invalid escape"
+      in 
+      Buffer.add_char string_buf c; read_string lexbuf
+      }
+  | line_terminator { Lexing.new_line lexbuf;
+              Buffer.add_string string_buf (Lexing.lexeme lexbuf);
+              read_string lexbuf }
+  | eof { error "unterminated string literal" lexbuf }
+  | _ as c { Buffer.add_char string_buf c; read_string lexbuf }
