@@ -16,10 +16,33 @@ let digit = ['0'-'9']
 let letter = ['a'-'z' 'A'-'Z' '_']
 let float_lit = digit+ '.' digit+
 let ident = ['a' - 'z'] (letter | digit)*
+let constructor = ['A' - 'Z'] (letter | digit)*
+let character = [^ '\\' '\'' '\r' '\n']
 
 (** lexing rules **)
 rule read = parse
   | whitespace { read lexbuf }
+  | digit+ as x { INT_LIT (int_of_string x) }
+  | float_lit as f { FLOAT_LIT (float_of_string f) }
+  (* | "def" { DEF }
+  | "data" { DATA }
+  | "type" { TYPE }
+  | "import" { IMPORT } *)
+  | "if" { IF }
+  | "then" { THEN }
+  | "else" { ELSE }
+  | "let" { LET }
+  | "in" { IN }
+  (* | "as" { AS }
+  | "and" { AND }
+  | "match" { MATCH }
+  | "with" { WITH }
+  | "Interger" { INTEGER }
+  | "Bool" { BOOLEAN }
+  | "Double" { FLOAT }
+  | "Char" { CHAR }
+  | "true" { TRUE }
+  | "false" { FALSE } *)
   | "+" { PLUS }
   | "*" { TIMES }
   | "-" { MINUS }
@@ -37,18 +60,33 @@ rule read = parse
   | ")" { RPAREN }
   | "!=" { NOTEQUAL }
   | "=" { ASSIGN }
-  | digit+ as x { INT_LIT (int_of_string x) }
-  | float_lit as f { FLOAT_LIT (float_of_string f) }
-  | "if" { IF }
-  | "then" { THEN }
-  | "else" { ELSE }
-  | "let" { LET }
-  | "in" { IN }
-  | "true" { TRUE }
-  | "false" { FALSE }
+  (* | "::" { COLONCOLON}
+  | "|" { OR }
+  | "_" { WILDCARD }
+  | "\\" { BACKSLASH }
+  | "[" { LBRACKET }
+  | "]" { RBRACKET }
+  | "->" { RARROW }
+  | "=>" { IMPLIES }
+  | "$" { DOLLAR } *)
   | ident as i { IDENT (i)}
-  | eof { EOF }
+  (* | constructor as c { CONSTRUCTOR (c)} *)
+  (* | '\'' (character as c) '\'' { CHAR_LIT c }
+  | '\'' '\\' (_ as escape) '\'' { 
+      let c = match escape with
+        | 'n' -> '\n'
+        | 'r' -> '\r'
+        | 't' -> '\t'
+        | 'b' -> '\b'
+        | '\\' -> '\\'
+        | '\'' -> '\''
+        | '"' -> '"'
+        | _ -> failwith "Invalid escape"
+      in 
+    CHAR_LIT c 
+    } *)
   | '"' { Buffer.clear string_buf; read_string lexbuf }
+  | eof { EOF }
   | _ { error (Lexing.lexeme lexbuf) lexbuf }
 
   and read_string = parse
