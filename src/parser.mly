@@ -23,9 +23,11 @@ open Ast
 %token DIV "/" INT_DIV "//" MOD "%"
 %token GREATER ">" LESSTHAN "<" GREATEREQUAL ">=" LESSTHANEQUAL "<=" EQUALEQUAL "=="
 %token OROR "||" ANDAND "&&" 
-// %token COLONCOLON "::" OR "|" WILDCARD "_" BACKSLASH "\\"
+%token OR "|" WILDCARD "_" 
+// %token BACKSLASH "\\"
 %token LPAREN "(" RPAREN ")" 
-// %token LBRACKET "[" RBRACKET "]" RARROW "->" IMPLIES "=>"
+%token RARROW "->" 
+//%token IMPLIES "=>"
 %token NOTEQUAL "!="
 %token ASSIGN "="
 // %token DOLLAR "$"
@@ -35,7 +37,7 @@ open Ast
 %token IF "if" THEN "then" ELSE "else"
 %token LET "let" IN "in"
 // %token AS "as" AND "and"
-// %token MATCH "match" WITH "with"
+%token MATCH "match" WITH "with"
 
 // %token INTEGER "Integer" BOOLEAN "Bool" FLOAT "Double" CHAR "Char"
 
@@ -48,6 +50,8 @@ open Ast
 (* precedence and associativity declarations *)
 %right IN
 %nonassoc ELSE
+%right OR          /* Changed to %right to prioritize shifting new cases */
+%right RARROW      
 %right OROR
 %right ANDAND
 %nonassoc EQUALEQUAL NOTEQUAL GREATER LESSTHAN GREATEREQUAL LESSTHANEQUAL
@@ -123,3 +127,31 @@ expr:
   | left = expr; "::"; right = expr { BinExpr { prop = (); pos = $loc; op = StringConcat; left = left; right = right } }
   
   | "-"; e1 = expr %prec UMINUS { UnaryExpr { prop = (); pos = $loc; op = Neg; operand = e1 } }
+  | "match"; e = expr; "with"; cases = match_cases { Match {
+      prop = ();
+      pos = $loc;
+      expr = e;
+      cases = cases;
+    }}
+
+simple_pat:
+  | "_" { PatWildcard { prop = (); pos = $loc } }
+  | id = IDENT { PatVar { prop = (); pos = $loc; name = id } }
+  | n = INT_LIT { PatInt { prop = (); pos = $loc; value = n } }
+  | "true" { PatBool { prop = (); pos = $loc; value = true } }
+  | "false" { PatBool { prop = (); pos = $loc; value = false } }
+  | "["; "]" { PatEmptyList { prop = (); pos = $loc } }
+  | "("; p = pat; ")" { p }
+
+pat:
+  | p = simple_pat { p }
+  | head = simple_pat; "::"; tail = pat { PatCons {
+      prop = (); pos = $loc; head = head; tail = tail
+    }}
+    
+match_cases:
+  | c = match_case %prec OR { [c] }
+  | c = match_case; cases = match_cases { c :: cases }
+
+match_case:
+  | "|"; p = pat; "->"; e = expr { (p, e) }
