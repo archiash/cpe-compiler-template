@@ -8,22 +8,34 @@ open Ast
 (* token declarations *)
 %token <int> INT_LIT
 %token <float> FLOAT_LIT
+%token <char> CHAR_LIT
 %token <string> STRING_LIT
 %token <string> IDENT
+%token <string> CONSTRUCTOR
 
 %token TRUE "true"
 %token FALSE "false"
+
+// symbol
 %token PLUS "+" TIMES "*"
 %token PLUSPLUS "++"
 %token MINUS "-"
 %token DIV "/" INT_DIV "//" MOD "%"
 %token GREATER ">" LESSTHAN "<" GREATEREQUAL ">=" LESSTHANEQUAL "<=" EQUALEQUAL "=="
-%token OROR "||" ANDAND "&&"
-%token LPAREN "(" RPAREN ")"
+%token OROR "||" ANDAND "&&" COLONCOLON "::" OR "|" WILDCARD "_" BACKSLASH "\\"
+%token LPAREN "(" RPAREN ")" LBRACKET "[" RBRACKET "]" RARROW "->" IMPLIES "=>"
 %token NOTEQUAL "!="
+%token ASSIGN "="
+%token DOLLAR "$"
 
+// keyword
+%token DEF "def" DATA "data" TYPE "type" IMPORT "import"
 %token IF "if" THEN "then" ELSE "else"
-%token LET "let" IN "in" ASSIGN "="
+%token LET "let" IN "in" AS "as" AND "and"
+%token MATCH "match" WITH "with"
+
+%token INTEGER "Integer" BOOLEAN "Bool" FLOAT "Double" CHAR "Char"
+
 %token EOF
 
 (* precedence and associativity declarations *)
