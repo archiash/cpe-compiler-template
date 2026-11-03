@@ -8,10 +8,10 @@ open Ast
 (* token declarations *)
 %token <int> INT_LIT
 %token <float> FLOAT_LIT
-%token <char> CHAR_LIT
+// %token <char> CHAR_LIT
 %token <string> STRING_LIT
 %token <string> IDENT
-%token <string> CONSTRUCTOR
+// %token <string> CONSTRUCTOR
 
 %token TRUE "true"
 %token FALSE "false"
@@ -22,19 +22,22 @@ open Ast
 %token MINUS "-"
 %token DIV "/" INT_DIV "//" MOD "%"
 %token GREATER ">" LESSTHAN "<" GREATEREQUAL ">=" LESSTHANEQUAL "<=" EQUALEQUAL "=="
-%token OROR "||" ANDAND "&&" COLONCOLON "::" OR "|" WILDCARD "_" BACKSLASH "\\"
-%token LPAREN "(" RPAREN ")" LBRACKET "[" RBRACKET "]" RARROW "->" IMPLIES "=>"
+%token OROR "||" ANDAND "&&" 
+// %token COLONCOLON "::" OR "|" WILDCARD "_" BACKSLASH "\\"
+%token LPAREN "(" RPAREN ")" 
+// %token LBRACKET "[" RBRACKET "]" RARROW "->" IMPLIES "=>"
 %token NOTEQUAL "!="
 %token ASSIGN "="
-%token DOLLAR "$"
+// %token DOLLAR "$"
 
 // keyword
-%token DEF "def" DATA "data" TYPE "type" IMPORT "import"
+// %token DEF "def" DATA "data" TYPE "type" IMPORT "import"
 %token IF "if" THEN "then" ELSE "else"
-%token LET "let" IN "in" AS "as" AND "and"
-%token MATCH "match" WITH "with"
+%token LET "let" IN "in"
+// %token AS "as" AND "and"
+// %token MATCH "match" WITH "with"
 
-%token INTEGER "Integer" BOOLEAN "Bool" FLOAT "Double" CHAR "Char"
+// %token INTEGER "Integer" BOOLEAN "Bool" FLOAT "Double" CHAR "Char"
 
 %token EOF
 
