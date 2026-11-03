@@ -27,6 +27,8 @@ let character = [^ '\\' '\'' '\r' '\n']
 (** lexing rules **)
 rule read = parse
   | whitespace { read lexbuf }
+  | '#' [^ '\r' '\n' ]* { read lexbuf }
+  | "(*" { read_comment lexbuf }
   | symbols as s { Symbol(s) }
   | keywords as k { Keyword(k) }
   | lower_ident as lident { VariableName(lident) }
@@ -72,3 +74,10 @@ rule read = parse
               read_string lexbuf }
   | eof { error "unterminated string literal" lexbuf }
   | _ as c { Buffer.add_char string_buf c; read_string lexbuf }
+
+  and read_comment = parse
+  | "*)" { read lexbuf }
+  | "(*" { error "nested comment not allowed" lexbuf }
+  | line_terminator { Lexing.new_line lexbuf; read_comment lexbuf }
+  | eof { error "unterminated comment" lexbuf }
+  | _ { read_comment lexbuf }
