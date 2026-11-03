@@ -79,7 +79,12 @@ simple_expr:
 
 app_expr:
   | e = simple_expr { e }
-  | func = app_expr; arg = simple_expr { App { prop = (); pos = $loc; func = func; arg = arg } }
+  | func = app_expr; arg = simple_expr { App { 
+      prop = (); 
+      pos = $loc; 
+      func = func; 
+      arg = arg 
+    }}
 
 expr:
   | e = app_expr { e }
