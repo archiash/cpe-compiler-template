@@ -24,7 +24,7 @@ open Ast
 %token OR "|" WILDCARD "_" 
 // %token BACKSLASH "\\"
 // %token COMMA "," DOT "." EXCLAMATION "!" 
-%token COLLON ":"
+%token COLON ":"
 %token LPAREN "(" RPAREN ")" 
 %token RARROW "->" 
 //%token IMPLIES "=>"
