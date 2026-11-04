@@ -124,6 +124,16 @@ let pos_of_pat (p : 't pat) : pos =
 
 type env = (string * ty) list
 
+let is_lowercase_ident (s : string) : bool =
+  String.length s > 0 && s.[0] >= 'a' && s.[0] <= 'z'
+
+let has_duplicates (lst : string list) : bool =
+  let rec check seen = function
+    | [] -> false
+    | x :: xs -> if List.mem x seen then true else check (x :: seen) xs
+  in
+  check [] lst
+
 let rec typecheck_pat (p : unit pat) (expected_ty : ty) : (ty pat * env) option =
   match p with
   | PatWildcard r ->
@@ -358,18 +368,71 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
           | None -> None
         )
     )
-  | _ -> failwith "unimplemented"
+  | DefFunc r -> (
+      if not (is_lowercase_ident r.name) then (
+        prerr_string
+          (string_of_positions r.pos
+          ^ ": function name '" ^ r.name ^ "' must start with a lowercase letter\n");
+        None
+      ) else if has_duplicates r.args then (
+        prerr_string
+          (string_of_positions r.pos
+          ^ ": duplicate formal parameter name in function '" ^ r.name ^ "'\n");
+        None
+      ) else if List.exists (fun a -> not (is_lowercase_ident a)) r.args then (
+        prerr_string
+          (string_of_positions r.pos
+          ^ ": parameter names in function '" ^ r.name ^ "' must start with a lowercase letter\n");
+        None
+      ) else (
+        let arg_bindings = List.map (fun a -> (a, Any)) r.args in
+        let self_placeholder =
+          match r.args with
+          | [] -> Function (Unit, Any)
+          | _ -> List.fold_right (fun _ acc -> Function (Any, acc)) r.args Any
+        in
+        let body_env = (r.name, self_placeholder) :: (arg_bindings @ env) in
+        match typecheck_with_env body_env r.body with
+        | Some typed_body ->
+            let ret_ty = prop_of_prog typed_body in
+            let fn_ty =
+              match r.args with
+              | [] -> Function (Unit, ret_ty)
+              | _ -> List.fold_right (fun _ acc -> Function (Any, acc)) r.args ret_ty
+            in
+            Some (DefFunc { r with prop = fn_ty; body = typed_body })
+        | None -> None
+      )
+    )
+  | Prog r -> (
+      let rec check_decls cur_env decls acc =
+        match decls with
+        | [] ->
+            let result_ty =
+              match List.rev acc with
+              | [] -> Unit
+              | last :: _ -> prop_of_prog last
+            in
+            Some (Prog { r with prop = result_ty; decls = List.rev acc })
+        | (d : unit prog) :: ds -> (
+            match d with
+            | DefFunc fr -> (
+                match typecheck_with_env cur_env d with
+                | Some (DefFunc typed_fr as typed_d) ->
+                    let new_env = (fr.name, typed_fr.prop) :: cur_env in
+                    check_decls new_env ds (typed_d :: acc)
+                | _ -> None
+              )
+            | _ -> (
+                match typecheck_with_env cur_env d with
+                | Some typed_d -> check_decls cur_env ds (typed_d :: acc)
+                | None -> None
+              )
+          )
+      in
+      check_decls env r.decls []
+    )
 
-
-let is_lowercase_ident (s : string) : bool =
-  String.length s > 0 && s.[0] >= 'a' && s.[0] <= 'z'
-
-let has_duplicates (lst : string list) : bool =
-  let rec check seen = function
-    | [] -> false
-    | x :: xs -> if List.mem x seen then true else check (x :: seen) xs
-  in
-  check [] lst
 
 let prop_of_decl (decl : 't decl) : 't =
   match decl with
