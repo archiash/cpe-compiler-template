@@ -1,0 +1,1 @@
+(((import pervasives) (import utils u)) ((def main ((arg ([] String))) String ((! u unwords) arg))))

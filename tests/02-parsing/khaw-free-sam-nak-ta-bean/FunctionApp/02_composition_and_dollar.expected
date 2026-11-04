@@ -1,0 +1,1 @@
+(() ((def pipeline ((x Integer)) String ($ (. (map digitToChar) (. reverse intToDigits)) (+ x 1)))))

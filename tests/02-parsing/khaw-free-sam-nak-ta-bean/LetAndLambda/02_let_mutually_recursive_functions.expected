@@ -1,0 +1,1 @@
+(() ((def hofstadter ((n Integer)) (, Integer Integer) (let ((f ((n Integer)) Integer (if (== n 0) 1 (- n (m (f (- n 1)))))) (m ((n Integer)) Integer (if (== n 0) 0 (- n (f (m (- n 1))))))) (, (f n) (m n))))))

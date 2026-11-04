@@ -1,0 +1,4 @@
+def compute (x : Integer) : Integer =
+  let a = x + 1
+  and b = x * 2
+  in a + b

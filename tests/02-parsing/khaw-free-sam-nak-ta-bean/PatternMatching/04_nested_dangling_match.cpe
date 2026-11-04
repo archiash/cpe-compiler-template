@@ -1,0 +1,7 @@
+def checkNested (xs : [Integer]) : Integer =
+  match xs with
+  | [] -> 0
+  | h :: t ->
+    match h with
+    | 0 -> 100
+    | _ -> 200

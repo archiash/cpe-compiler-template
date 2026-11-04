@@ -1,0 +1,2 @@
+def reverse (xs : [a]) : [a] =
+  foldl (\(acc : [a]) (x : a) : [a] => x :: acc) [] xs

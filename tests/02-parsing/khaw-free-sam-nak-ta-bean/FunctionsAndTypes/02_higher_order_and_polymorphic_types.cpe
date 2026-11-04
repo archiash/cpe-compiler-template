@@ -1,0 +1,4 @@
+def foldr (accum : a -> b -> b) (init : b) (xs : [a]) : b =
+  match xs with
+  | [] -> init
+  | hd :: tl -> accum hd (foldr accum init tl)

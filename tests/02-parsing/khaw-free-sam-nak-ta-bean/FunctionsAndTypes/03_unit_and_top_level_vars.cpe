@@ -1,0 +1,5 @@
+def bot () : Integer =
+  let forever (x : Integer) : Integer = forever x
+  in forever 42
+
+def pi : Double = 3.14

@@ -1,0 +1,1 @@
+(() ((data (Tree a) (Leaf (Node a (Tree a) (Tree a)))) (def preorder ((t (Tree a))) ([] a) (match t ((-> Leaf []) (-> (Node v l r) (:: v (++ (preorder l) (preorder r)))))))))

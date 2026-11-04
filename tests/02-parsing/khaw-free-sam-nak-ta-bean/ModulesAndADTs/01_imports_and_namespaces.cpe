@@ -1,0 +1,5 @@
+import pervasives
+import utils as u
+
+def main (arg : [String]) : String =
+  u!unwords arg

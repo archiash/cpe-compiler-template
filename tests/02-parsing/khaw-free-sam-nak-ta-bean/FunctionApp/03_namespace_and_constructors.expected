@@ -1,0 +1,1 @@
+(((import utils lib)) ((def run ((x Integer)) (Maybe Integer) (Just (+ ((! lib parseInt) "42") x)))))

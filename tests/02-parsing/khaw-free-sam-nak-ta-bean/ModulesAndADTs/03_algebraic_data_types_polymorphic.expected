@@ -1,0 +1,1 @@
+(() ((data Bool (False True)) (data (List a) (Empty (Cons a (List a)))) (data (Either a b) ((Left a) (Right b)))))

@@ -1,0 +1,1 @@
+(() ((def f ((x Integer) (y Integer)) Integer (* (+ 2 x) y))))

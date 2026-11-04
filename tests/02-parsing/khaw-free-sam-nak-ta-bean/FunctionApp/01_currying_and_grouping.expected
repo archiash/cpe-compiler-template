@@ -1,0 +1,1 @@
+(() ((def applyThree ((f (-> a (-> b (-> c d)))) (x a) (y b) (z c)) d (((f x) y) z)) (def nestedApp ((f (-> b c)) (g (-> a b)) (x a)) c (f (g x)))))

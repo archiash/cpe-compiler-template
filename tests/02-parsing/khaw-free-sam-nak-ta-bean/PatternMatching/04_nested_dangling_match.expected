@@ -1,0 +1,1 @@
+(() ((def checkNested ((xs ([] Integer))) Integer (match xs ((-> [] 0) (-> (:: h t) (match h ((-> 0 100) (-> _ 200)))))))))

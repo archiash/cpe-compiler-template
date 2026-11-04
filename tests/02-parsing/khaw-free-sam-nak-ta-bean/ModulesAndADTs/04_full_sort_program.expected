@@ -1,0 +1,1 @@
+(((import utils)) ((def sort ((xs ([] Integer))) ([] Integer) (match xs ((-> [] []) (-> (:: x xs) (match ((partition x) xs) ((-> (, lt ge) (++ (sort lt) (++ (:: x []) (sort ge)))))))))) (def main ((arg ([] String))) String ($ showIntList ($ sort ($ parseIntList arg))))))

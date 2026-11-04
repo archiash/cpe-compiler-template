@@ -1,0 +1,2 @@
+def combine (xs : [Integer]) (ys : [Integer]) : [Integer] =
+  1 + 2 :: 3 * 4 :: xs ++ ys

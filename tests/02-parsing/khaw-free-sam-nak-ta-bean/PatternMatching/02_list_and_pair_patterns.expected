@@ -1,0 +1,1 @@
+(() ((def sumPairs ((xs ([] (, Integer Integer)))) Integer (match xs ((-> [] 0) (-> (:: (, a b) rest) (+ (+ a b) (sumPairs rest))))))))

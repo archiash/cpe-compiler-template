@@ -1,0 +1,1 @@
+(() ((def describe ((n Integer)) String (match n ((-> 0 "zero") (-> 1 "one") (-> _ "other"))))))

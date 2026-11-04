@@ -1,0 +1,1 @@
+(() ((type String ([] Char)) (type (Endomap s) ((Map s) s)) (type (PairList a b) ([] (, a b)))))
