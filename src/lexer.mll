@@ -37,8 +37,8 @@ rule read = parse
   | "in" { IN }
   | "match" { MATCH }
   | "with" { WITH }
-  (* | "as" { AS }
-  | "and" { AND } *)
+  | "as" { AS }
+  | "and" { AND }
   | "Interger" { INTEGER }
   | "Bool" { BOOLEAN }
   | "Double" { FLOAT }
@@ -69,13 +69,12 @@ rule read = parse
   | "|" { OR }
   | "_" { WILDCARD }
   | ":" { COLON }
-  (*
   | "\\" { BACKSLASH }
   | "=>" { IMPLIES }
   | "$" { DOLLAR }
   | "," { COMMA }
   | "." { DOT }
-  | "!" { EXCLAMATION } *)
+  | "!" { EXCLAMATION }
   | ident as i { IDENT (i)}
   | constructor as c { CONSTRUCTOR (c)}
   | '\'' (character as c) '\'' { CHAR_LIT c }
