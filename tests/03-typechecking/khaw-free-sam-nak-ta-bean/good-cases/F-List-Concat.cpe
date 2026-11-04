@@ -1,0 +1,11 @@
+def length (ls : [a]) : Int = 
+    match ls with
+    | [] -> 0
+    | x::xs -> 1 + length xs
+
+def sum (ls : [Int]) : Int =
+    match ls with
+    | [] -> 0
+    | x::xs -> x + sum xs
+
+let x = [] in sum 1::2::x + length true::false::x
