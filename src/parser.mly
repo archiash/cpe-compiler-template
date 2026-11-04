@@ -140,7 +140,7 @@ expr:
   | e1 = expr; "<"; e2 = expr { BinExpr { prop = (); pos = $loc; op = Lt; left = e1; right = e2 } }
   | e1 = expr; "||"; e2 = expr { BinExpr { prop = (); pos = $loc; op = LOr; left = e1; right = e2 } }
   | e1 = expr; "&&"; e2 = expr { BinExpr { prop = (); pos = $loc; op = LAnd; left = e1; right = e2 } }
-  | e1 = expr; "++"; e2 = expr { BinExpr { prop = (); pos = $loc; op = StringConcat; left = e1; right = e2 } }
+  | e1 = expr; "++"; e2 = expr { BinExpr { prop = (); pos = $loc; op = Concat; left = e1; right = e2 } }
   | left = expr; "::"; right = expr { BinExpr { prop = (); pos = $loc; op = Cons; left = left; right = right } }
   
   | "-"; e1 = expr %prec UMINUS { UnaryExpr { prop = (); pos = $loc; op = Neg; operand = e1 } }

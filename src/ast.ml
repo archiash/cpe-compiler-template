@@ -114,7 +114,7 @@ and op =
   | Leq
   | Lt
   | Gt
-  | StringConcat
+  | Concat
   | Cons
 and unop =
   | Neg
@@ -171,7 +171,7 @@ let rec string_of_prog prog : string =
   | UnaryExpr r -> "(" ^ string_of_unop r.op ^ string_of_prog r.operand ^ ")"
   | StringLit r -> "\"" ^ r.value ^ "\""
   | Var r -> r.name
-  | If r -> "(if " ^ string_of_prog r.consequent ^ " then " ^ string_of_prog r.consequent ^ " else " ^ string_of_prog r.alternative ^ ")"
+  | If r -> "(if " ^ string_of_prog r.condition ^ " then " ^ string_of_prog r.consequent ^ " else " ^ string_of_prog r.alternative ^ ")"
   | Let r -> "(let " ^ r.name ^ " = " ^ string_of_prog r.value ^ " in " ^ string_of_prog r.body ^ ")"
   | EmptyList _ -> "[]"
   | App r -> "(App " ^ string_of_prog r.func ^ " " ^ string_of_prog r.arg ^ ")"
@@ -200,7 +200,7 @@ and string_of_op op : string =
   | Geq -> ">="
   | Lt -> "<"
   | Gt -> ">"
-  | StringConcat -> "++"
+  | Concat -> "++"
   | Cons -> "::"
 
 and string_of_unop op : string =
