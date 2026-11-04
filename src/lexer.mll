@@ -62,21 +62,23 @@ rule read = parse
   | ")" { RPAREN }
   | "!=" { NOTEQUAL }
   | "=" { ASSIGN }
-  (* | "::" { COLONCOLON}
-  | "|" { OR }
-  | "_" { WILDCARD }
-  | "\\" { BACKSLASH }
+  | "::" { CONS}
   | "[" { LBRACKET }
   | "]" { RBRACKET }
   | "->" { RARROW }
+  | "|" { OR }
+  | "_" { WILDCARD }
+  (*
+  | "\\" { BACKSLASH }
   | "=>" { IMPLIES }
   | "$" { DOLLAR }
   | "," { COMMA }
   | "." { DOT }
+  | ":" { COLON }
   | "!" { EXCLAMATION } *)
   | ident as i { IDENT (i)}
   (* | constructor as c { CONSTRUCTOR (c)} *)
-  (* | '\'' (character as c) '\'' { CHAR_LIT c }
+  | '\'' (character as c) '\'' { CHAR_LIT c }
   | '\'' '\\' (_ as escape) '\'' { 
       let c = match escape with
         | 'n' -> '\n'
@@ -89,7 +91,7 @@ rule read = parse
         | _ -> failwith "Invalid escape"
       in 
     CHAR_LIT c 
-    } *)
+    }
   | '"' { Buffer.clear string_buf; read_string lexbuf }
   | eof { EOF }
   | _ { error (Lexing.lexeme lexbuf) lexbuf }
