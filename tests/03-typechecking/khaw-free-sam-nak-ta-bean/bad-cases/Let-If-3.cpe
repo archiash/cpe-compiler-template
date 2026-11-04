@@ -1,1 +1,1 @@
-let x = true in if x == 5 then false else 7
+let x = True in if x == 5 then False else 7

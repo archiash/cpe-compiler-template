@@ -8,4 +8,4 @@ def sum (ls : [Int]) : Int =
     | [] -> 0
     | x::xs -> x + sum xs
 
-let x = [] in sum 1::2::x + length true::false::x
+let x = [] in sum 1::2::x + length True::False::x
