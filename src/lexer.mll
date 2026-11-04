@@ -27,9 +27,9 @@ rule read = parse
   | '#' [^ '\r' '\n' ]* { read lexbuf }
   | "(*" { read_comment lexbuf }
   | "def" { DEF }
-  (* | "data" { DATA }
+  | "data" { DATA }
   | "type" { TYPE }
-  | "import" { IMPORT } *)
+  | "import" { IMPORT }
   | "if" { IF }
   | "then" { THEN }
   | "else" { ELSE }
