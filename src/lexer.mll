@@ -77,7 +77,7 @@ rule read = parse
   | "." { DOT }
   | "!" { EXCLAMATION } *)
   | ident as i { IDENT (i)}
-  (* | constructor as c { CONSTRUCTOR (c)} *)
+  | constructor as c { CONSTRUCTOR (c)}
   | '\'' (character as c) '\'' { CHAR_LIT c }
   | '\'' '\\' (_ as escape) '\'' { 
       let c = match escape with
