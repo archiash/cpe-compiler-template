@@ -98,7 +98,7 @@ let type_of_binop (op : op) (left_ty : ty) (right_ty : ty) : (ty, string) result
       | Some res -> Ok (List res)
       | None -> Error ("list of " ^ string_of_type elem_ty)
     )
-  | _ -> Error "404"
+  | StringConcat, _, _ -> Error "string"  
 
 let type_of_unop (op : unop) (operand_ty : ty) : (ty, string) result =
   match op, operand_ty with
@@ -148,15 +148,31 @@ let pos_of_decl (decl : 't decl) : pos =
   | DefFunc r -> r.pos
   | Expr e -> pos_of_prog e
 
-let is_lowercase_ident (s : string) : bool =
-  String.length s > 0 && s.[0] >= 'a' && s.[0] <= 'z'
-
 let has_duplicates (lst : string list) : bool =
   let rec check seen = function
     | [] -> false
     | x :: xs -> if List.mem x seen then true else check (x :: seen) xs
   in
   check [] lst
+
+let fn_placeholder_type (args : string list) : ty =
+  match args with
+  | [] -> Function (Unit, Any)
+  | _ -> List.fold_right (fun _ acc -> Function (Any, acc)) args Any
+
+let validate_func_header (pos : pos) (name : string) (args : string list) (seen_names : string list) : bool =
+  if List.mem name seen_names then (
+    prerr_string
+      (string_of_positions pos
+      ^ ": duplicate function definition '" ^ name ^ "'\n");
+    false
+  ) else if has_duplicates args then (
+    prerr_string
+      (string_of_positions pos
+      ^ ": duplicate formal parameter name in function '" ^ name ^ "'\n");
+    false
+  ) else
+    true
 
 (* ========================================================================= *)
 (* 4. Environment & Built-ins                                                *)
@@ -165,8 +181,6 @@ let has_duplicates (lst : string list) : bool =
 type env = (string * ty) list
 
 let initial_env : env = [
-  ("true", Bool);
-  ("false", Bool);
   ("error", Function (String, Any));
   ("ord", Function (Char, Int));
   ("chr", Function (Int, Char));
@@ -304,13 +318,14 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
       match typecheck_with_env env r.condition with
       | Some cond_prog -> (
           let cond_ty = prop_of_prog cond_prog in
-          if cond_ty <> Bool then (
-            prerr_string
-              (string_of_positions (pos_of_prog cond_prog)
-              ^ ": expected bool condition, but found "
-              ^ string_of_type cond_ty ^ "\n");
-            None
-          ) else (
+          match types_match cond_ty Bool with
+          | None ->
+              prerr_string
+                (string_of_positions (pos_of_prog cond_prog)
+                ^ ": expected bool condition, but found "
+                ^ string_of_type cond_ty ^ "\n");
+              None
+          | Some _ -> (
             match typecheck_with_env env r.consequent, typecheck_with_env env r.alternative with
             | Some cons_prog, Some alt_prog ->
                 let cons_ty = prop_of_prog cons_prog in
@@ -434,28 +449,11 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
 
   (* Top-level function definition: def f args = body *)
   | DefFunc r -> (
-      if not (is_lowercase_ident r.name) then (
-        prerr_string
-          (string_of_positions r.pos
-          ^ ": function name '" ^ r.name ^ "' must start with a lowercase letter\n");
+      if not (validate_func_header r.pos r.name r.args []) then
         None
-      ) else if has_duplicates r.args then (
-        prerr_string
-          (string_of_positions r.pos
-          ^ ": duplicate formal parameter name in function '" ^ r.name ^ "'\n");
-        None
-      ) else if List.exists (fun a -> not (is_lowercase_ident a)) r.args then (
-        prerr_string
-          (string_of_positions r.pos
-          ^ ": parameter names in function '" ^ r.name ^ "' must start with a lowercase letter\n");
-        None
-      ) else (
+      else
         let arg_bindings = List.map (fun a -> (a, Any)) r.args in
-        let self_placeholder =
-          match r.args with
-          | [] -> Function (Unit, Any)
-          | _ -> List.fold_right (fun _ acc -> Function (Any, acc)) r.args Any
-        in
+        let self_placeholder = fn_placeholder_type r.args in
         let body_env = (r.name, self_placeholder) :: (arg_bindings @ env) in
         match typecheck_with_env body_env r.body with
         | Some typed_body ->
@@ -467,12 +465,27 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
             in
             Some (DefFunc { r with prop = fn_ty; body = typed_body })
         | None -> None
-      )
     )
 
   (* Program (sequence of declarations / expressions in a file) *)
   | Prog r -> (
-      let rec check_decls cur_env decls acc =
+      (* Pass 1: Collect and validate all top-level function headers *)
+      let rec pass1 cur_env seen decls =
+        match decls with
+        | [] -> Some cur_env
+        | d :: ds -> (
+            match (d : unit prog) with
+            | DefFunc fr ->
+                if not (validate_func_header fr.pos fr.name fr.args seen) then
+                  None
+                else
+                  let placeholder = fn_placeholder_type fr.args in
+                  pass1 ((fr.name, placeholder) :: cur_env) (fr.name :: seen) ds
+            | _ -> pass1 cur_env seen ds
+          )
+      in
+      (* Pass 2: Typecheck function bodies and expressions with the populated environment *)
+      let rec pass2 cur_env decls acc =
         match decls with
         | [] ->
             let result_ty =
@@ -481,63 +494,101 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
               | last :: _ -> prop_of_prog last
             in
             Some (Prog { r with prop = result_ty; decls = List.rev acc })
-        | (d : unit prog) :: ds -> (
-            match d with
+        | d :: ds -> (
+            match (d : unit prog) with
             | DefFunc fr -> (
-                match typecheck_with_env cur_env d with
-                | Some (DefFunc typed_fr as typed_d) ->
-                    let new_env = (fr.name, typed_fr.prop) :: cur_env in
-                    check_decls new_env ds (typed_d :: acc)
-                | _ -> None
+                let arg_bindings = List.map (fun a -> (a, Any)) fr.args in
+                let self_placeholder = fn_placeholder_type fr.args in
+                let body_env = (fr.name, self_placeholder) :: (arg_bindings @ cur_env) in
+                match typecheck_with_env body_env fr.body with
+                | Some typed_body ->
+                    let ret_ty = prop_of_prog typed_body in
+                    let fn_ty =
+                      match fr.args with
+                      | [] -> Function (Unit, ret_ty)
+                      | _ -> List.fold_right (fun _ acc -> Function (Any, acc)) fr.args ret_ty
+                    in
+                    let (typed_d : ty prog) = DefFunc {
+                      prop = fn_ty;
+                      pos = fr.pos;
+                      name = fr.name;
+                      args = fr.args;
+                      body = typed_body;
+                    } in
+                    let next_env = (fr.name, fn_ty) :: cur_env in
+                    pass2 next_env ds (typed_d :: acc)
+                | None -> None
               )
             | _ -> (
                 match typecheck_with_env cur_env d with
-                | Some typed_d -> check_decls cur_env ds (typed_d :: acc)
+                | Some typed_d -> pass2 cur_env ds (typed_d :: acc)
                 | None -> None
               )
           )
       in
-      check_decls env r.decls []
+      match pass1 env [] r.decls with
+      | Some pass1_env -> pass2 pass1_env r.decls []
+      | None -> None
     )
 
 (* ========================================================================= *)
 (* 7. Declarations ('t decl) Support                                         *)
 (* ========================================================================= *)
 
-let typecheck_decl (env : env) (d : unit decl) : (ty decl * env) option =
-  match d with
-  | Expr e -> (
-      match typecheck_with_env env e with
-      | Some typed_e -> Some (Expr typed_e, env)
-      | None -> None
-    )
-  | DefFunc r -> (
-      let prog_form : unit prog = DefFunc {
-        prop = ();
-        pos = r.pos;
-        name = r.name;
-        args = r.args;
-        body = r.body;
-      } in
-      match typecheck_with_env env prog_form with
-      | Some (DefFunc typed_r) ->
-          let new_env = (r.name, typed_r.prop) :: env in
-          Some (DefFunc { r with prop = typed_r.prop; body = typed_r.body }, new_env)
-      | _ -> None
+let rec collect_decl_funcs (cur_env : env) (seen : string list) (decls : unit decl list) : env option =
+  match decls with
+  | [] -> Some cur_env
+  | d :: ds -> (
+      match d with
+      | DefFunc fr ->
+          if not (validate_func_header fr.pos fr.name fr.args seen) then
+            None
+          else
+            let placeholder = fn_placeholder_type fr.args in
+            collect_decl_funcs ((fr.name, placeholder) :: cur_env) (fr.name :: seen) ds
+      | Expr _ -> collect_decl_funcs cur_env seen ds
     )
 
-let rec typecheck_decls (env : env) (decls : unit decl list) : (ty decl list * env) option =
-  match decls with
-  | [] -> Some ([], env)
-  | d :: ds -> (
-      match typecheck_decl env d with
-      | Some (typed_d, env') -> (
-          match typecheck_decls env' ds with
-          | Some (typed_ds, final_env) -> Some (typed_d :: typed_ds, final_env)
-          | None -> None
-        )
-      | None -> None
-    )
+let typecheck_decls (env : env) (decls : unit decl list) : (ty decl list * env) option =
+  match collect_decl_funcs env [] decls with
+  | None -> None
+  | Some pass1_env ->
+      let rec pass2 cur_env ds acc =
+        match ds with
+        | [] -> Some (List.rev acc, cur_env)
+        | d :: rest -> (
+            match d with
+            | DefFunc fr -> (
+                let arg_bindings = List.map (fun a -> (a, Any)) fr.args in
+                let self_placeholder = fn_placeholder_type fr.args in
+                let body_env = (fr.name, self_placeholder) :: (arg_bindings @ cur_env) in
+                match typecheck_with_env body_env fr.body with
+                | Some typed_body ->
+                    let ret_ty = prop_of_prog typed_body in
+                    let fn_ty =
+                      match fr.args with
+                      | [] -> Function (Unit, ret_ty)
+                      | _ -> List.fold_right (fun _ acc -> Function (Any, acc)) fr.args ret_ty
+                    in
+                    let typed_d = DefFunc { fr with prop = fn_ty; body = typed_body } in
+                    let next_env = (fr.name, fn_ty) :: cur_env in
+                    pass2 next_env rest (typed_d :: acc)
+                | None -> None
+              )
+            | Expr e -> (
+                match typecheck_with_env cur_env e with
+                | Some typed_e ->
+                    pass2 cur_env rest (Expr typed_e :: acc)
+                | None -> None
+              )
+          )
+      in
+      pass2 pass1_env decls []
+
+let typecheck_decl (env : env) (d : unit decl) : (ty decl * env) option =
+  match typecheck_decls env [d] with
+  | Some ([typed_d], final_env) -> Some (typed_d, final_env)
+  | _ -> None
 
 (* ========================================================================= *)
 (* 8. Top-Level Entry Points                                                 *)
