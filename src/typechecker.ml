@@ -297,7 +297,61 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
         )
       | _ -> None
     )
-  | Match _ -> None
+  | Match r -> (
+      match typecheck_with_env env r.expr with
+      | None -> None
+      | Some expr_prog -> (
+          let expr_ty = prop_of_prog expr_prog in
+          let rec check_cases (cases : (unit pat * unit prog) list) : ((ty pat * ty prog) list * ty) option =
+            match cases with
+            | [] ->
+                prerr_string (string_of_positions r.pos ^ ": empty match cases\n");
+                None
+            | [(pat, body)] -> (
+                match typecheck_pat pat expr_ty with
+                | None -> None
+                | Some (pat_prog, pat_env) -> (
+                    let case_env = pat_env @ env in
+                    match typecheck_with_env case_env body with
+                    | None -> None
+                    | Some body_prog ->
+                        Some ([(pat_prog, body_prog)], prop_of_prog body_prog)
+                  )
+              )
+            | (pat, body) :: rest -> (
+                match typecheck_pat pat expr_ty with
+                | None -> None
+                | Some (pat_prog, pat_env) -> (
+                    let case_env = pat_env @ env in
+                    match typecheck_with_env case_env body with
+                    | None -> None
+                    | Some body_prog -> (
+                        let body_ty = prop_of_prog body_prog in
+                        match check_cases rest with
+                        | None -> None
+                        | Some (rest_typed, rest_ty) -> (
+                            match types_match body_ty rest_ty with
+                            | Some common_ty ->
+                                Some ((pat_prog, body_prog) :: rest_typed, common_ty)
+                            | None ->
+                                prerr_string
+                                  (string_of_positions (pos_of_prog body_prog)
+                                  ^ ": match cases have incompatible types: "
+                                  ^ string_of_type body_ty ^ " and "
+                                  ^ string_of_type rest_ty ^ "\n");
+                                None
+                          )
+                      )
+                  )
+              )
+          in
+          match check_cases r.cases with
+          | Some (typed_cases, result_ty) ->
+              Some (Match { r with prop = result_ty; expr = expr_prog; cases = typed_cases })
+          | None -> None
+        )
+    )
+
 
 let typecheck_prog (p : unit prog) : ty prog option =
   typecheck_with_env [] p
