@@ -29,6 +29,8 @@ open Ast
 //%token IMPLIES "=>"
 %token NOTEQUAL "!="
 %token ASSIGN "="
+// %token TRUE "True"
+// %token FALSE "False"
 // %token DOLLAR "$"
 
 // keyword
@@ -71,8 +73,7 @@ prog:
   | e = expr { e }
 
 simple_expr:
-  | "true" { BoolLit { prop = (); pos = $loc; value = true } }
-  | "false" { BoolLit { prop = (); pos = $loc; value = false } }
+  | n = BOO_LIT { BoolLit { prop = (); pos = $loc; value = n } }
   | n = INT_LIT { IntLit { prop = (); pos = $loc; value = n } }
   | n = FLOAT_LIT { FloatLit { prop = (); pos = $loc; value = n } }
   | s = STRING_LIT { StringLit { prop = (); pos = $loc; value = s } }
@@ -137,8 +138,7 @@ simple_pat:
   | "_" { PatWildcard { prop = (); pos = $loc } }
   | id = IDENT { PatVar { prop = (); pos = $loc; name = id } }
   | n = INT_LIT { PatInt { prop = (); pos = $loc; value = n } }
-  | "true" { PatBool { prop = (); pos = $loc; value = true } }
-  | "false" { PatBool { prop = (); pos = $loc; value = false } }
+  | n = BOO_LIT { PatBool { prop = (); pos = $loc; value = n } }
   | "["; "]" { PatEmptyList { prop = (); pos = $loc } }
   | "("; p = pat; ")" { p }
 
@@ -147,7 +147,7 @@ pat:
   | head = simple_pat; "::"; tail = pat { PatCons {
       prop = (); pos = $loc; head = head; tail = tail
     }}
-    
+
 match_cases:
   | c = match_case %prec OR { [c] }
   | c = match_case; cases = match_cases { c :: cases }
