@@ -23,7 +23,7 @@ open Ast
 %token OROR "||" ANDAND "&&" 
 %token OR "|" WILDCARD "_" 
 // %token BACKSLASH "\\"
-// %token COMMA "," DOT "." EXCLAMATION "!"
+// %token COMMA "," DOT "." EXCLAMATION "!" COLLON ":"
 %token LPAREN "(" RPAREN ")" 
 %token RARROW "->" 
 //%token IMPLIES "=>"

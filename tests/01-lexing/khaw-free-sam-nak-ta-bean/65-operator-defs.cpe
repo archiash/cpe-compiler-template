@@ -1,0 +1,5 @@
+def (&&) (p : Bool) (q : Bool) : Bool = p
+def (||) (p : Bool) (q : Bool) : Bool = p
+def (++) (xs : [a]) (ys : [a]) : [a] = xs
+def (.) (g : b -> c) (f : a -> b) (x : a) : c = g (f x)
+def ($) (f : a -> b) (x : a) : b = f x

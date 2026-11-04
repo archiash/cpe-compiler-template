@@ -1,0 +1,26 @@
+data Bool = False | True  # boolean type
+data () = ()  # unit type
+data (a, b) = (a, b)  # polymorphic pair type
+data [a] = [] | a :: [a]  # polymorphic list type
+type String = [Char]  # type alias
+
+# list concatenation (left-associative)
+def (++) (xs : [a]) (ys : [a]) : [a] =
+  match xs with
+  | [] -> ys
+  | hd::tl -> hd::(tl++ys)
+
+# function composition (right-associative)
+def (.) (g : b -> c) (f : a -> b) (x : a) : c = g (f x)
+
+# right-associative function application
+def ($) (f : a -> b) (x : a) : b = f x
+
+# ASCII value of a character
+def ord (c : Char) : Integer = ...
+
+# character of an ASCII value
+def chr (a : Integer) : Char = ...
+
+# display error and terminate program
+def error (msg : String) : a = ...

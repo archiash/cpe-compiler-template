@@ -1,0 +1,2 @@
+(\ (acc : [a]) (x : a) : [a] => x::acc)
+\ (x : Integer) : Integer => x * 2

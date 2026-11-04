@@ -1,0 +1,5 @@
+import imported as lib
+lib!fun
+lib!fun lib!other x
+a!=b
+a != b

@@ -1,0 +1,6 @@
+| _::_ -> False
+| x1::x2::xs -> x1 == x2
+| a::b::[] -> a + b
+| hd::tl -> hd
+| (_, _) -> True
+| _ -> False

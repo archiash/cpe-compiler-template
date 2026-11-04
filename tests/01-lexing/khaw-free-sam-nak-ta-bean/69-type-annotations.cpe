@@ -1,0 +1,4 @@
+def f (g : (a -> b) -> c) (xs : [a]) (p : (a, b)) : Tree a = x
+def u () : () = ()
+data Either a b = Left a | Right b
+type String = [Char]

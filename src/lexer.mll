@@ -35,10 +35,10 @@ rule read = parse
   | "else" { ELSE }
   | "let" { LET }
   | "in" { IN }
-  (* | "as" { AS }
-  | "and" { AND }
   | "match" { MATCH }
   | "with" { WITH }
+  (* | "as" { AS }
+  | "and" { AND }
   | "Interger" { INTEGER }
   | "Bool" { BOOLEAN }
   | "Double" { FLOAT }
