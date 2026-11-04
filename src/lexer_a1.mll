@@ -11,14 +11,14 @@ let string_buf = Buffer.create 256
 (** regex patterns **)
 let line_terminator = '\r' | '\n' | "\r\n"
 let whitespace = (line_terminator | [' ' '\t'])+
-let keywords= "def" | "if" | "then" | "else" | "data" | "type" | "import" | "as" | "and" | "in" | "match" | "with"
-let symbols = "*" | "/" | "//" | "%" | "+" | "-" | "=" | "::" | "++" | "==" | "<" | "<=" | ">=" | ">" | "&&" | "||" | "$" 
-            | "(" | ")" | "[" | "]" | "::" | "->" | "|" | "_" | "\\" | "=>"
+let keywords= "def" | "if" | "then" | "else" | "data" | "type" | "import" | "as" | "and" | "in" | "match" | "with" | "let"
+let symbols = "*" | "/" | "//" | "%" | "+" | "-" | "=" | "::" | "++" | "==" | "<" | "<=" | ">=" | ">" | "!=" | "&&" | "||"
+            | "$" | "(" | ")" | "[" | "]" | ":" | "->" | "|" | "_" | "\\" | "=>" | "," | "." | "!"
 let digit = ['0'-'9']
 let letter = ['a'-'z' 'A'-'Z' '_']
 let upper_ident = ['A' - 'Z'] (letter | digit)*
 let lower_ident = ['a' - 'z'] (letter | digit)*
-let types = "Bool" | "Int" | "Double" | "Char"
+let types = "Bool" | "Integer" | "Double" | "Char"
 let bool_lit = "True" | "False"
 let int_lit = digit+
 let float_lit = digit+ '.' digit+

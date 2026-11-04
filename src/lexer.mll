@@ -70,7 +70,10 @@ rule read = parse
   | "]" { RBRACKET }
   | "->" { RARROW }
   | "=>" { IMPLIES }
-  | "$" { DOLLAR } *)
+  | "$" { DOLLAR }
+  | "," { COMMA }
+  | "." { DOT }
+  | "!" { EXCLAMATION } *)
   | ident as i { IDENT (i)}
   (* | constructor as c { CONSTRUCTOR (c)} *)
   (* | '\'' (character as c) '\'' { CHAR_LIT c }
