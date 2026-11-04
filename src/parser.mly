@@ -12,7 +12,7 @@ open Ast
 %token <bool> BOOL_LIT
 %token <string> STRING_LIT
 %token <string> IDENT
-// %token <string> CONSTRUCTOR
+%token <string> CONSTRUCTOR
 
 // symbol
 %token PLUS "+" TIMES "*"
@@ -34,10 +34,11 @@ open Ast
 
 // keyword
 %token DEF "def" 
-// %token DATA "data" TYPE "type" IMPORT "import"
+%token DATA "data" TYPE "type" IMPORT "import"
 %token IF "if" THEN "then" ELSE "else"
 %token LET "let" IN "in"
-// %token AS "as" AND "and"
+%token AS "as" 
+// %token AND "and"
 %token MATCH "match" WITH "with"
 
 %token INTEGER "Integer" BOOLEAN "Bool" FLOAT "Double" CHAR "Char"
@@ -86,7 +87,7 @@ return_type:
 decl:
   | e = expr %prec DECL { e }
   
-| "def"; id = IDENT; args = list(param); ret = return_type; "="; body = expr %prec DECL { DefFunc {
+  | "def"; id = IDENT; args = list(param); ret = return_type; "="; body = expr %prec DECL { DefFunc {
       prop = ();
       pos = $loc;
       name = id;
@@ -94,7 +95,14 @@ decl:
       return_type = ret;
       body = body;
     }}
-
+  | "import"; path = STRING_LIT %prec DECL { Import { prop = (); pos = $loc; path = path; alias = None } }
+  | "import"; path = STRING_LIT; "as"; a = CONSTRUCTOR %prec DECL { Import { prop = (); pos = $loc; path = path; alias = Some a } }
+  
+  | "type"; name = CONSTRUCTOR; "="; t = typ %prec DECL { TypeDef { prop = (); pos = $loc; name = name; typ = t } }
+  
+  | "data"; name = CONSTRUCTOR; "="; constructors = separated_nonempty_list(OR, data_constructor) %prec DECL { 
+      DataDef { prop = (); pos = $loc; name = name; constructors = constructors } 
+    }
 
 simple_expr:
   | n = BOOL_LIT { BoolLit { prop = (); pos = $loc; value = n } }
@@ -105,7 +113,8 @@ simple_expr:
   | id = IDENT { Var { prop = (); pos = $loc; name = id } }
   | "["; "]" { EmptyList { prop = (); pos = $loc } }
   | "("; e = expr; ")" { e }
-
+  | c = CONSTRUCTOR { Constructor { prop = (); pos = $loc; name = c } }
+  
 app_expr:
   | e = simple_expr { e }
   | func = app_expr; arg = simple_expr { App { 
@@ -192,3 +201,6 @@ simple_typ:
   | c = IDENT { TyBase c }     
   | "["; t = typ; "]" { TyList t }
   | "("; t = typ; ")" { t }
+
+data_constructor:
+  | name = CONSTRUCTOR; args = list(simple_typ) { (name, args) }

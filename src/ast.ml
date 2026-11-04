@@ -105,6 +105,10 @@ type 't prog =
     pos : pos;
     decls : 't prog list;
   }
+  | Import of { prop : 't; pos : pos; path : string; alias : string option }
+  | TypeDef of { prop : 't; pos : pos; name : string; typ : 't typ }
+  | DataDef of { prop : 't; pos : pos; name : string; constructors : (string * 't typ list) list }
+  | Constructor of { prop : 't; pos : pos; name : string }
 
 and op =
   | Add
@@ -144,6 +148,10 @@ let prop_of_prog (prog : 't prog) : 't =
   | Match r -> r.prop
   | DefFunc r -> r.prop
   | Prog r -> r.prop
+  | Import r -> r.prop
+  | TypeDef r -> r.prop
+  | DataDef r -> r.prop
+  | Constructor r -> r.prop
 
 let rec string_of_pat (pat : 't pat) : string =
   match pat with
@@ -192,7 +200,12 @@ let rec string_of_prog prog : string =
       "(def " ^ r.name ^ args_str ^ ret_str ^ " " ^ string_of_prog r.body ^ ")"
   | Prog r -> 
       "(prog " ^ String.concat " " (List.map string_of_prog r.decls) ^ ")"
-
+  | Import r -> "(import \"" ^ r.path ^ "\"" ^ (match r.alias with Some a -> " as " ^ a | None -> "") ^ ")"
+  | TypeDef r -> "(type " ^ r.name ^ " = " ^ string_of_typ r.typ ^ ")"
+  | DataDef r -> 
+      let string_of_ctor (name, args) = name ^ (if args = [] then "" else " " ^ String.concat " " (List.map string_of_typ args)) in
+      "(data " ^ r.name ^ " = " ^ String.concat " | " (List.map string_of_ctor r.constructors) ^ ")"
+  | Constructor r -> r.name
 and string_of_op op : string =
   match op with
   | Add -> "+"
