@@ -73,7 +73,7 @@ prog:
   | e = expr { e }
 
 simple_expr:
-  | n = BOO_LIT { BoolLit { prop = (); pos = $loc; value = n } }
+  | n = BOOL_LIT { BoolLit { prop = (); pos = $loc; value = n } }
   | n = INT_LIT { IntLit { prop = (); pos = $loc; value = n } }
   | n = FLOAT_LIT { FloatLit { prop = (); pos = $loc; value = n } }
   | s = STRING_LIT { StringLit { prop = (); pos = $loc; value = s } }
@@ -138,7 +138,7 @@ simple_pat:
   | "_" { PatWildcard { prop = (); pos = $loc } }
   | id = IDENT { PatVar { prop = (); pos = $loc; name = id } }
   | n = INT_LIT { PatInt { prop = (); pos = $loc; value = n } }
-  | n = BOO_LIT { PatBool { prop = (); pos = $loc; value = n } }
+  | n = BOOL_LIT { PatBool { prop = (); pos = $loc; value = n } }
   | "["; "]" { PatEmptyList { prop = (); pos = $loc } }
   | "("; p = pat; ")" { p }
 
