@@ -1,0 +1,7 @@
+# whole line comment
+1 # trailing comment
+# comment with "quote" and 'c' and (* and *) and + - * /
+2
+#
+3 #no space
+# last line without newline

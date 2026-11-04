@@ -1,0 +1,6 @@
+(* simple *)
+1 (* inline *) 2
+(* multi
+   line
+   comment *)
+3
