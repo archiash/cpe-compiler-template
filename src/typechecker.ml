@@ -190,61 +190,49 @@ let initial_env : env = [
 (* 5. Pattern Typechecking                                                   *)
 (* ========================================================================= *)
 
+let check_lit_pat (pos : pos) (expected_ty : ty) (lit_ty : ty) (desc : string) (construct : ty -> ty pat) : (ty pat * env) option =
+  match types_match lit_ty expected_ty with
+  | Some resolved_ty -> Some (construct resolved_ty, [])
+  | None ->
+      prerr_string
+        (string_of_positions pos
+        ^ ": expected pattern of type " ^ string_of_type expected_ty
+        ^ ", but found " ^ desc ^ "\n");
+      None
+
 let rec typecheck_pat (p : unit pat) (expected_ty : ty) : (ty pat * env) option =
   match p with
   | PatWildcard r ->
       Some (PatWildcard { prop = expected_ty; pos = r.pos }, [])
   | PatVar r ->
       Some (PatVar { prop = expected_ty; pos = r.pos; name = r.name }, [(r.name, expected_ty)])
-  | PatInt r -> (
-      match types_match Int expected_ty with
-      | Some _ -> Some (PatInt { prop = Int; pos = r.pos; value = r.value }, [])
-      | None ->
-          prerr_string
-            (string_of_positions r.pos
-            ^ ": expected pattern of type " ^ string_of_type expected_ty
-            ^ ", but found int pattern\n");
-          None
-    )
-  | PatBool r -> (
-      match types_match Bool expected_ty with
-      | Some _ -> Some (PatBool { prop = Bool; pos = r.pos; value = r.value }, [])
-      | None ->
-          prerr_string
-            (string_of_positions r.pos
-            ^ ": expected pattern of type " ^ string_of_type expected_ty
-            ^ ", but found bool pattern\n");
-          None
-    )
-  | PatEmptyList r -> (
-      match types_match (List Any) expected_ty with
-      | Some matched_list_ty ->
-          Some (PatEmptyList { prop = matched_list_ty; pos = r.pos }, [])
-      | None ->
-          prerr_string
-            (string_of_positions r.pos
-            ^ ": expected pattern of type " ^ string_of_type expected_ty
-            ^ ", but found empty list pattern []\n");
-          None
-    )
+  | PatInt r ->
+      check_lit_pat r.pos expected_ty Int "int pattern"
+        (fun prop -> PatInt { prop; pos = r.pos; value = r.value })
+  | PatBool r ->
+      check_lit_pat r.pos expected_ty Bool "bool pattern"
+        (fun prop -> PatBool { prop; pos = r.pos; value = r.value })
+  | PatEmptyList r ->
+      check_lit_pat r.pos expected_ty (List Any) "empty list pattern []"
+        (fun prop -> PatEmptyList { prop; pos = r.pos })
   | PatCons r -> (
-      match expected_ty with
-      | List elem_ty -> (
-          match typecheck_pat r.head elem_ty, typecheck_pat r.tail (List elem_ty) with
+      let elem_and_list_ty =
+        match expected_ty with
+        | List elem_ty -> Some (elem_ty, expected_ty)
+        | Any -> Some (Any, List Any)
+        | _ -> None
+      in
+      match elem_and_list_ty with
+      | Some (elem_ty, list_ty) -> (
+          match typecheck_pat r.head elem_ty, typecheck_pat r.tail list_ty with
           | Some (head_pat, env_h), Some (tail_pat, env_t) ->
-              Some (PatCons { prop = expected_ty; pos = r.pos; head = head_pat; tail = tail_pat }, env_h @ env_t)
+              Some (PatCons { prop = list_ty; pos = r.pos; head = head_pat; tail = tail_pat }, env_h @ env_t)
           | _ -> None
         )
-      | Any -> (
-          match typecheck_pat r.head Any, typecheck_pat r.tail (List Any) with
-          | Some (head_pat, env_h), Some (tail_pat, env_t) ->
-              Some (PatCons { prop = List Any; pos = r.pos; head = head_pat; tail = tail_pat }, env_h @ env_t)
-          | _ -> None
-        )
-      | other ->
+      | None ->
           prerr_string
             (string_of_positions r.pos
-            ^ ": expected pattern of type " ^ string_of_type other
+            ^ ": expected pattern of type " ^ string_of_type expected_ty
             ^ ", but found cons pattern (::)\n");
           None
     )
@@ -252,6 +240,30 @@ let rec typecheck_pat (p : unit pat) (expected_ty : ty) : (ty pat * env) option 
 (* ========================================================================= *)
 (* 6. Function & Program Typechecking Helpers                                *)
 (* ========================================================================= *)
+
+let decl_of_prog (p : 't prog) : 't decl =
+  match p with
+  | DefFunc r -> DefFunc { prop = r.prop; pos = r.pos; name = r.name; args = r.args; body = r.body }
+  | e -> Expr e
+
+let prog_of_decl (d : 't decl) : 't prog =
+  match d with
+  | DefFunc r -> DefFunc { prop = r.prop; pos = r.pos; name = r.name; args = r.args; body = r.body }
+  | Expr e -> e
+
+let rec collect_decl_funcs (cur_env : env) (seen : string list) (decls : unit decl list) : env option =
+  match decls with
+  | [] -> Some cur_env
+  | d :: ds -> (
+      match d with
+      | DefFunc fr ->
+          if not (validate_func_header fr.pos fr.name fr.args seen) then
+            None
+          else
+            let placeholder = fn_placeholder_type fr.args in
+            collect_decl_funcs ((fr.name, placeholder) :: cur_env) (fr.name :: seen) ds
+      | Expr _ -> collect_decl_funcs cur_env seen ds
+    )
 
 let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
   match p with
@@ -449,85 +461,23 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
 
   (* Top-level function definition: def f args = body *)
   | DefFunc r -> (
-      if not (validate_func_header r.pos r.name r.args []) then
-        None
-      else
-        let arg_bindings = List.map (fun a -> (a, Any)) r.args in
-        let self_placeholder = fn_placeholder_type r.args in
-        let body_env = (r.name, self_placeholder) :: (arg_bindings @ env) in
-        match typecheck_with_env body_env r.body with
-        | Some typed_body ->
-            let ret_ty = prop_of_prog typed_body in
-            let fn_ty =
-              match r.args with
-              | [] -> Function (Unit, ret_ty)
-              | _ -> List.fold_right (fun _ acc -> Function (Any, acc)) r.args ret_ty
-            in
-            Some (DefFunc { r with prop = fn_ty; body = typed_body })
-        | None -> None
+      match typecheck_decl env (decl_of_prog (DefFunc r)) with
+      | Some (typed_d, _) -> Some (prog_of_decl typed_d)
+      | None -> None
     )
 
   (* Program (sequence of declarations / expressions in a file) *)
   | Prog r -> (
-      (* Pass 1: Collect and validate all top-level function headers *)
-      let rec pass1 cur_env seen decls =
-        match decls with
-        | [] -> Some cur_env
-        | d :: ds -> (
-            match (d : unit prog) with
-            | DefFunc fr ->
-                if not (validate_func_header fr.pos fr.name fr.args seen) then
-                  None
-                else
-                  let placeholder = fn_placeholder_type fr.args in
-                  pass1 ((fr.name, placeholder) :: cur_env) (fr.name :: seen) ds
-            | _ -> pass1 cur_env seen ds
-          )
-      in
-      (* Pass 2: Typecheck function bodies and expressions with the populated environment *)
-      let rec pass2 cur_env decls acc =
-        match decls with
-        | [] ->
-            let result_ty =
-              match List.rev acc with
-              | [] -> Unit
-              | last :: _ -> prop_of_prog last
-            in
-            Some (Prog { r with prop = result_ty; decls = List.rev acc })
-        | d :: ds -> (
-            match (d : unit prog) with
-            | DefFunc fr -> (
-                let arg_bindings = List.map (fun a -> (a, Any)) fr.args in
-                let self_placeholder = fn_placeholder_type fr.args in
-                let body_env = (fr.name, self_placeholder) :: (arg_bindings @ cur_env) in
-                match typecheck_with_env body_env fr.body with
-                | Some typed_body ->
-                    let ret_ty = prop_of_prog typed_body in
-                    let fn_ty =
-                      match fr.args with
-                      | [] -> Function (Unit, ret_ty)
-                      | _ -> List.fold_right (fun _ acc -> Function (Any, acc)) fr.args ret_ty
-                    in
-                    let (typed_d : ty prog) = DefFunc {
-                      prop = fn_ty;
-                      pos = fr.pos;
-                      name = fr.name;
-                      args = fr.args;
-                      body = typed_body;
-                    } in
-                    let next_env = (fr.name, fn_ty) :: cur_env in
-                    pass2 next_env ds (typed_d :: acc)
-                | None -> None
-              )
-            | _ -> (
-                match typecheck_with_env cur_env d with
-                | Some typed_d -> pass2 cur_env ds (typed_d :: acc)
-                | None -> None
-              )
-          )
-      in
-      match pass1 env [] r.decls with
-      | Some pass1_env -> pass2 pass1_env r.decls []
+      let unit_decls = List.map decl_of_prog r.decls in
+      match typecheck_decls env unit_decls with
+      | Some (typed_decls, _) ->
+          let typed_progs = List.map prog_of_decl typed_decls in
+          let result_ty =
+            match List.rev typed_progs with
+            | [] -> Unit
+            | last :: _ -> prop_of_prog last
+          in
+          Some (Prog { r with prop = result_ty; decls = typed_progs })
       | None -> None
     )
 
@@ -535,21 +485,7 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
 (* 7. Declarations ('t decl) Support                                         *)
 (* ========================================================================= *)
 
-let rec collect_decl_funcs (cur_env : env) (seen : string list) (decls : unit decl list) : env option =
-  match decls with
-  | [] -> Some cur_env
-  | d :: ds -> (
-      match d with
-      | DefFunc fr ->
-          if not (validate_func_header fr.pos fr.name fr.args seen) then
-            None
-          else
-            let placeholder = fn_placeholder_type fr.args in
-            collect_decl_funcs ((fr.name, placeholder) :: cur_env) (fr.name :: seen) ds
-      | Expr _ -> collect_decl_funcs cur_env seen ds
-    )
-
-let typecheck_decls (env : env) (decls : unit decl list) : (ty decl list * env) option =
+and typecheck_decls (env : env) (decls : unit decl list) : (ty decl list * env) option =
   match collect_decl_funcs env [] decls with
   | None -> None
   | Some pass1_env ->
@@ -585,7 +521,7 @@ let typecheck_decls (env : env) (decls : unit decl list) : (ty decl list * env) 
       in
       pass2 pass1_env decls []
 
-let typecheck_decl (env : env) (d : unit decl) : (ty decl * env) option =
+and typecheck_decl (env : env) (d : unit decl) : (ty decl * env) option =
   match typecheck_decls env [d] with
   | Some ([typed_d], final_env) -> Some (typed_d, final_env)
   | _ -> None
