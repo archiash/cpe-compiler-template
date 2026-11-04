@@ -126,16 +126,6 @@ and op =
 and unop =
   | Neg
 
-type 't decl =
-  | DefFunc of {
-      prop : 't;
-      pos : pos;
-      name : string;
-      args : string list;
-      body : 't prog;
-    }
-  | Expr of 't prog
-
 let prop_of_prog (prog : 't prog) : 't =
   match prog with
   | IntLit r -> r.prop
@@ -225,15 +215,3 @@ and string_of_op op : string =
 and string_of_unop op : string =
   match op with
   | Neg -> "-"
-
-let prop_of_decl (decl : 't decl) : 't =
-  match decl with
-  | DefFunc r -> r.prop
-  | Expr e -> prop_of_prog e
-
-let string_of_decl (decl : 't decl) : string =
-  match decl with
-  | Expr e -> string_of_prog e
-  | DefFunc r -> 
-      let args_str = if r.args = [] then "" else " " ^ String.concat " " r.args in
-      "(def " ^ r.name ^ args_str ^ " = " ^ string_of_prog r.body ^ ")"
