@@ -1,0 +1,8 @@
+match xs with
+| [] -> 0
+| h :: t -> h + sum t
+
+match n with
+| 0 -> "zero"
+| 1 -> "one"
+| _ -> "many"

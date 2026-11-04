@@ -1,0 +1,4 @@
+def id x = x
+def add x y = x + y
+def is_positive n = if n > 0 then 1 else 0
+add 10 20
