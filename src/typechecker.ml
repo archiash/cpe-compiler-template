@@ -107,7 +107,9 @@ let pos_of_prog (p : 't prog) : pos =
   | EmptyList r -> r.pos
   | App r -> r.pos
   | Match r -> r.pos
-
+  | DefFunc r -> r.pos
+  | Prog r -> r.pos
+  
 let pos_of_pat (p : 't pat) : pos =
   match p with
   | PatWildcard r -> r.pos
@@ -351,6 +353,7 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
           | None -> None
         )
     )
+  | _ -> failwith "unimplemented"
 
 
 let typecheck_prog (p : unit prog) : ty prog option =

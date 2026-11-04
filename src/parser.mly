@@ -8,7 +8,7 @@ open Ast
 (* token declarations *)
 %token <int> INT_LIT
 %token <float> FLOAT_LIT
-// %token <char> CHAR_LIT
+%token <char> CHAR_LIT
 %token <bool> BOOL_LIT
 %token <string> STRING_LIT
 %token <string> IDENT
@@ -34,7 +34,8 @@ open Ast
 // %token DOLLAR "$"
 
 // keyword
-// %token DEF "def" DATA "data" TYPE "type" IMPORT "import"
+%token DEF "def" 
+// %token DATA "data" TYPE "type" IMPORT "import"
 %token IF "if" THEN "then" ELSE "else"
 %token LET "let" IN "in"
 // %token AS "as" AND "and"
@@ -49,6 +50,8 @@ open Ast
 %token EOF
 
 (* precedence and associativity declarations *)
+%nonassoc DECL
+%nonassoc BOOL_LIT INT_LIT FLOAT_LIT CHAR_LIT STRING_LIT IDENT LBRACKET LPAREN
 %right IN
 %nonassoc ELSE
 %right OR          /* Changed to %right to prioritize shifting new cases */
@@ -67,15 +70,29 @@ open Ast
 
 (** rules section **)
 start:
-  | prog = prog; EOF { prog }
+| decls = decl_list; EOF { Prog { prop = (); pos = $loc; decls = decls } }
 
-prog:
-  | e = expr { e }
+decl_list:
+  | /* empty file */       { [] }
+  | d = decl; ds = decl_list { d :: ds }
+
+decl:
+  | e = expr %prec DECL { e }
+  
+  | "def"; id = IDENT; args = list(IDENT); "="; body = expr %prec DECL { DefFunc {
+      prop = ();
+      pos = $loc;
+      name = id;
+      args = args;
+      body = body;
+    }}
+
 
 simple_expr:
   | n = BOOL_LIT { BoolLit { prop = (); pos = $loc; value = n } }
   | n = INT_LIT { IntLit { prop = (); pos = $loc; value = n } }
   | n = FLOAT_LIT { FloatLit { prop = (); pos = $loc; value = n } }
+  | n = CHAR_LIT { CharLit { prop = (); pos = $loc; value = n } }
   | s = STRING_LIT { StringLit { prop = (); pos = $loc; value = s } }
   | id = IDENT { Var { prop = (); pos = $loc; name = id } }
   | "["; "]" { EmptyList { prop = (); pos = $loc } }
@@ -91,7 +108,7 @@ app_expr:
     }}
 
 expr:
-  | e = app_expr { e }
+  | e = app_expr %prec DECL { e }
   
   | "if"; c = expr; "then"; e1 = expr; "else"; e2 = expr { If {
       prop = ();
@@ -124,7 +141,7 @@ expr:
   | e1 = expr; "||"; e2 = expr { BinExpr { prop = (); pos = $loc; op = LOr; left = e1; right = e2 } }
   | e1 = expr; "&&"; e2 = expr { BinExpr { prop = (); pos = $loc; op = LAnd; left = e1; right = e2 } }
   | e1 = expr; "++"; e2 = expr { BinExpr { prop = (); pos = $loc; op = StringConcat; left = e1; right = e2 } }
-  | left = expr; "::"; right = expr { BinExpr { prop = (); pos = $loc; op = StringConcat; left = left; right = right } }
+  | left = expr; "::"; right = expr { BinExpr { prop = (); pos = $loc; op = Cons; left = left; right = right } }
   
   | "-"; e1 = expr %prec UMINUS { UnaryExpr { prop = (); pos = $loc; op = Neg; operand = e1 } }
   | "match"; e = expr; "with"; cases = match_cases { Match {

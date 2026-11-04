@@ -86,6 +86,18 @@ type 't prog =
       expr : 't prog;
       cases : ('t pat * 't prog) list;
     }
+  | DefFunc of {
+    prop : 't;
+    pos : pos;
+    name : string;
+    args : string list;
+    body : 't prog;
+  }
+  | Prog of {
+    prop : 't;
+    pos : pos;
+    decls : 't prog list;
+  }
 
 and op =
   | Add
@@ -133,6 +145,8 @@ let prop_of_prog (prog : 't prog) : 't =
   | EmptyList r -> r.prop
   | App r -> r.prop
   | Match r -> r.prop
+  | DefFunc r -> r.prop
+  | Prog r -> r.prop
 
 let rec string_of_pat (pat : 't pat) : string =
   match pat with
@@ -164,6 +178,11 @@ let rec string_of_prog prog : string =
   | Match r -> let string_of_case (p, e) = "| " ^ string_of_pat p ^ " -> " ^ string_of_prog e in
       let cases_str = String.concat " " (List.map string_of_case r.cases) in
       "(match " ^ string_of_prog r.expr ^ " with " ^ cases_str ^ ")"
+  | DefFunc r -> 
+      let args_str = if r.args = [] then "" else " " ^ String.concat " " r.args in
+      "(def " ^ r.name ^ args_str ^ " " ^ string_of_prog r.body ^ ")"
+  | Prog r -> 
+      "(prog " ^ String.concat " " (List.map string_of_prog r.decls) ^ ")"
 
 and string_of_op op : string =
   match op with
@@ -188,8 +207,14 @@ and string_of_unop op : string =
   match op with
   | Neg -> "-"
 
+let prop_of_decl (decl : 't decl) : 't =
+  match decl with
+  | DefFunc r -> r.prop
+  | Expr e -> prop_of_prog e
+
 let string_of_decl (decl : 't decl) : string =
   match decl with
   | Expr e -> string_of_prog e
   | DefFunc r -> 
-      "(def " ^ r.name ^ " " ^ String.concat " " r.args ^ " = " ^ string_of_prog r.body ^ ")"
+      let args_str = if r.args = [] then "" else " " ^ String.concat " " r.args in
+      "(def " ^ r.name ^ args_str ^ " = " ^ string_of_prog r.body ^ ")"
