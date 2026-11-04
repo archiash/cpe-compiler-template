@@ -42,9 +42,9 @@ rule read = parse
   | "Interger" { INTEGER }
   | "Bool" { BOOLEAN }
   | "Double" { FLOAT }
-  | "Char" { CHAR }
-  | "true" { TRUE }
-  | "false" { FALSE } *)
+  | "Char" { CHAR } *)
+  | "True" { BOO_LIT(true) }
+  | "False" { BOO_LIT(false) } 
   | "+" { PLUS }
   | "*" { TIMES }
   | "-" { MINUS }

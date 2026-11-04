@@ -9,12 +9,10 @@ open Ast
 %token <int> INT_LIT
 %token <float> FLOAT_LIT
 // %token <char> CHAR_LIT
+%token <bool> BOO_LIT
 %token <string> STRING_LIT
 %token <string> IDENT
 // %token <string> CONSTRUCTOR
-
-%token TRUE "true"
-%token FALSE "false"
 
 // symbol
 %token PLUS "+" TIMES "*"

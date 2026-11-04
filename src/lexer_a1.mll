@@ -19,7 +19,6 @@ let letter = ['a'-'z' 'A'-'Z' '_']
 let upper_ident = ['A' - 'Z'] (letter | digit)*
 let lower_ident = ['a' - 'z'] (letter | digit)*
 let types = "Bool" | "Integer" | "Double" | "Char"
-let bool_lit = "True" | "False"
 let int_lit = digit+
 let float_lit = digit+ '.' digit+
 let character = [^ '\\' '\'' '\r' '\n']
@@ -31,6 +30,8 @@ rule read = parse
   | "(*" { read_comment lexbuf }
   | symbols as s { Symbol(s) }
   | keywords as k { Keyword(k) }
+  | "True" { BoolLit(true) }
+  | "False" { BoolLit(false) }
   | lower_ident as lident { VariableName(lident) }
   | upper_ident as uident { TypeOrConstructorName(uident) }
   | types as t { TypeOrConstructorName(t) }
