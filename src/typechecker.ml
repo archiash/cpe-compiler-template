@@ -51,21 +51,24 @@ let type_of_binop (op : op) (left_ty : ty) (right_ty : ty) : (ty, string) result
   match op, left_ty, right_ty with
   | (Add | Sub | Mult), Int, Int -> Ok Int
   | (Add | Sub | Mult), (Float | Int), (Float | Int) -> Ok Float
+  | (Add | Sub | Mult), Any, t | (Add | Sub | Mult), t, Any -> Ok t
   | Div, (Float | Int), (Float | Int) -> Ok Float
+  | Div, (Float | Int | Any), (Float | Int | Any) -> Ok Float
   | IntDiv, (Float | Int), Int -> Ok Int
-  | Mod, Int, Int -> Ok Int
-  | Mod, Float, Int -> Ok Float
+  | IntDiv, (Float | Int | Any), (Int | Any) -> Ok Int
+  | Mod, (Int | Any), (Int | Any) -> Ok Int
+  | Mod, Float, (Int | Any) -> Ok Float
   | (Add | Sub | Mult | Div | IntDiv | Mod), _, _ -> Error "int"
 
-  | (LOr | LAnd | Eq | Neq), Bool, Bool -> Ok Bool
-  | (Eq | Neq | Lt | Leq | Gt | Geq), Int, Int -> Ok Bool
-  | (Eq | Neq | Lt | Leq | Gt | Geq), Float, Float -> Ok Bool
-  | (Eq | Neq), List l1, List l2 -> (
-      match types_match l1 l2 with
+  | (LOr | LAnd), Bool, Bool -> Ok Bool
+  | (Lt | Leq | Gt | Geq), Int, Int -> Ok Bool
+  | (Lt | Leq | Gt | Geq), Float, Float -> Ok Bool
+  | (Eq | Neq), t1, t2 -> (
+      match types_match t1 t2 with
       | Some _ -> Ok Bool
-      | None -> Error "matching list"
+      | None -> Error "matching types"
     )
-  | (LOr | LAnd | Eq | Neq | Lt | Leq | Gt | Geq), _, _ -> Error "bool"
+  | (LOr | LAnd | Lt | Leq | Gt | Geq), _, _ -> Error "bool"
   | Cons, elem_ty, List list_elem_ty -> (
       match types_match elem_ty list_elem_ty with
       | Some res -> Ok (List res)
@@ -356,10 +359,105 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
   | _ -> failwith "unimplemented"
 
 
+let is_lowercase_ident (s : string) : bool =
+  String.length s > 0 && s.[0] >= 'a' && s.[0] <= 'z'
+
+let has_duplicates (lst : string list) : bool =
+  let rec check seen = function
+    | [] -> false
+    | x :: xs -> if List.mem x seen then true else check (x :: seen) xs
+  in
+  check [] lst
+
+let prop_of_decl (decl : 't decl) : 't =
+  match decl with
+  | DefFunc r -> r.prop
+  | Expr e -> prop_of_prog e
+
+let pos_of_decl (decl : 't decl) : pos =
+  match decl with
+  | DefFunc r -> r.pos
+  | Expr e -> pos_of_prog e
+
+let initial_env : env = [
+  ("true", Bool);
+  ("false", Bool);
+  ("error", Function (String, Any));
+  ("ord", Function (Char, Int));
+  ("chr", Function (Int, Char));
+]
+
+let typecheck_decl (env : env) (d : unit decl) : (ty decl * env) option =
+  match d with
+  | Expr e -> (
+      match typecheck_with_env env e with
+      | Some typed_e -> Some (Expr typed_e, env)
+      | None -> None
+    )
+  | DefFunc r ->
+      if not (is_lowercase_ident r.name) then (
+        prerr_string
+          (string_of_positions r.pos
+          ^ ": function name '" ^ r.name ^ "' must start with a lowercase letter\n");
+        None
+      ) else if has_duplicates r.args then (
+        prerr_string
+          (string_of_positions r.pos
+          ^ ": duplicate formal parameter name in function '" ^ r.name ^ "'\n");
+        None
+      ) else if List.exists (fun a -> not (is_lowercase_ident a)) r.args then (
+        prerr_string
+          (string_of_positions r.pos
+          ^ ": parameter names in function '" ^ r.name ^ "' must start with a lowercase letter\n");
+        None
+      ) else (
+        let arg_bindings = List.map (fun a -> (a, Any)) r.args in
+        let self_placeholder =
+          match r.args with
+          | [] -> Function (Unit, Any)
+          | _ -> List.fold_right (fun _ acc -> Function (Any, acc)) r.args Any
+        in
+        let body_env = (r.name, self_placeholder) :: (arg_bindings @ env) in
+        match typecheck_with_env body_env r.body with
+        | Some typed_body ->
+            let ret_ty = prop_of_prog typed_body in
+            let fn_ty =
+              match r.args with
+              | [] -> Function (Unit, ret_ty)
+              | _ -> List.fold_right (fun _ acc -> Function (Any, acc)) r.args ret_ty
+            in
+            let new_env = (r.name, fn_ty) :: env in
+            Some (DefFunc { r with prop = fn_ty; body = typed_body }, new_env)
+        | None -> None
+      )
+
+let rec typecheck_decls (env : env) (decls : unit decl list) : (ty decl list * env) option =
+  match decls with
+  | [] -> Some ([], env)
+  | d :: ds -> (
+      match typecheck_decl env d with
+      | Some (typed_d, env') -> (
+          match typecheck_decls env' ds with
+          | Some (typed_ds, final_env) -> Some (typed_d :: typed_ds, final_env)
+          | None -> None
+        )
+      | None -> None
+    )
+
 let typecheck_prog (p : unit prog) : ty prog option =
-  typecheck_with_env [] p
+  typecheck_with_env initial_env p
 
 let typecheck (p : unit prog) : bool =
   match typecheck_prog p with
+  | Some _ -> true
+  | None -> false
+
+let typecheck_decl_program (d : unit decl) : bool =
+  match typecheck_decl initial_env d with
+  | Some _ -> true
+  | None -> false
+
+let typecheck_decls_program (decls : unit decl list) : bool =
+  match typecheck_decls initial_env decls with
   | Some _ -> true
   | None -> false
