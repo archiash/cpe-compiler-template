@@ -12,7 +12,7 @@ open Ast
 %token <bool> BOOL_LIT
 %token <string> STRING_LIT
 %token <string> IDENT
-%token <string> CONSTRUCTOR
+// %token <string> CONSTRUCTOR
 
 // symbol
 %token PLUS "+" TIMES "*"
@@ -23,7 +23,8 @@ open Ast
 %token OROR "||" ANDAND "&&" 
 %token OR "|" WILDCARD "_" 
 // %token BACKSLASH "\\"
-// %token COMMA "," DOT "." EXCLAMATION "!" COLLON ":"
+// %token COMMA "," DOT "." EXCLAMATION "!" 
+%token COLLON ":"
 %token LPAREN "(" RPAREN ")" 
 %token RARROW "->" 
 //%token IMPLIES "=>"
@@ -33,7 +34,7 @@ open Ast
 
 // keyword
 %token DEF "def" 
-%token DATA "data" TYPE "type" IMPORT "import"
+// %token DATA "data" TYPE "type" IMPORT "import"
 %token IF "if" THEN "then" ELSE "else"
 %token LET "let" IN "in"
 // %token AS "as" AND "and"
@@ -74,14 +75,23 @@ decl_list:
   | /* empty file */       { [] }
   | d = decl; ds = decl_list { d :: ds }
 
+param:
+  | id = IDENT { (id, None) }
+  | "("; id = IDENT; ":"; t = typ; ")" { (id, Some t) }
+
+return_type:
+  | /* empty */ { None }
+  | ":"; t = typ { Some t }
+
 decl:
   | e = expr %prec DECL { e }
   
-  | "def"; id = IDENT; args = list(IDENT); "="; body = expr %prec DECL { DefFunc {
+| "def"; id = IDENT; args = list(param); ret = return_type; "="; body = expr %prec DECL { DefFunc {
       prop = ();
       pos = $loc;
       name = id;
       args = args;
+      return_type = ret;
       body = body;
     }}
 
@@ -169,3 +179,16 @@ match_cases:
 
 match_case:
   | "|"; p = pat; "->"; e = expr { (p, e) }
+
+typ:
+  | t = simple_typ { t }
+  | t1 = simple_typ; "->"; t2 = typ { TyArrow (t1, t2) }
+
+simple_typ:
+  | "Integer" { TyBase "Int" }
+  | "Bool" { TyBase "Bool" }
+  | "Double" { TyBase "Double" }
+  | "Char" { TyBase "Char" }
+  | c = IDENT { TyBase c }     
+  | "["; t = typ; "]" { TyList t }
+  | "("; t = typ; ")" { t }

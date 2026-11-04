@@ -8,6 +8,12 @@ type 't pat =
   | PatEmptyList of { prop : 't; pos : pos }
   | PatCons of { prop : 't; pos : pos; head : 't pat; tail : 't pat }
 
+type 't typ =
+| TyBase of string
+| TyArrow of 't typ * 't typ
+| TyList of 't typ
+| TyVar of string
+
 type 't prog =
   | IntLit of {
       prop : 't;
@@ -87,12 +93,13 @@ type 't prog =
       cases : ('t pat * 't prog) list;
     }
   | DefFunc of {
-    prop : 't;
-    pos : pos;
-    name : string;
-    args : string list;
-    body : 't prog;
-  }
+      prop : 't;
+      pos : pos;
+      name : string;
+      args : (string * 't typ option) list;
+      return_type : 't typ option;
+      body : 't prog;
+    }
   | Prog of {
     prop : 't;
     pos : pos;
@@ -157,6 +164,12 @@ let rec string_of_pat (pat : 't pat) : string =
   | PatEmptyList _ -> "[]"
   | PatCons r -> "(" ^ string_of_pat r.head ^ " :: " ^ string_of_pat r.tail ^ ")"
 
+let rec string_of_typ (t : 't typ) : string =
+  match t with
+  | TyBase name -> name
+  | TyArrow (t1, t2) -> "(" ^ string_of_typ t1 ^ " -> " ^ string_of_typ t2 ^ ")"
+  | TyList t_inner -> "[" ^ string_of_typ t_inner ^ "]"
+  | TyVar name -> name
 let rec string_of_prog prog : string =
   match prog with
   | IntLit r -> "(" ^ string_of_int r.value ^ ")"
@@ -179,8 +192,14 @@ let rec string_of_prog prog : string =
       let cases_str = String.concat " " (List.map string_of_case r.cases) in
       "(match " ^ string_of_prog r.expr ^ " with " ^ cases_str ^ ")"
   | DefFunc r -> 
-      let args_str = if r.args = [] then "" else " " ^ String.concat " " r.args in
-      "(def " ^ r.name ^ args_str ^ " " ^ string_of_prog r.body ^ ")"
+      let string_of_arg (name, opt_t) = 
+        match opt_t with
+        | None -> name
+        | Some t -> "(" ^ name ^ " : " ^ string_of_typ t ^ ")"
+      in
+      let args_str = if r.args = [] then "" else " " ^ String.concat " " (List.map string_of_arg r.args) in
+      let ret_str = match r.return_type with None -> "" | Some t -> " : " ^ string_of_typ t in
+      "(def " ^ r.name ^ args_str ^ ret_str ^ " " ^ string_of_prog r.body ^ ")"
   | Prog r -> 
       "(prog " ^ String.concat " " (List.map string_of_prog r.decls) ^ ")"
 
