@@ -1,0 +1,9 @@
+# line comment containing (* block start
+(* block comment containing # hash *)
+1
+(* "quotes" and 'chars' inside *)
+2
+(* ( ) [ ] + - / = :: -> "unterminated string quote " *)
+3
+(* a ( b * c ) d *)
+4
