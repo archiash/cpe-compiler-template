@@ -1,9 +1,9 @@
-def length (ls : [a]) : Int = 
+def length (ls : [a]) : Integer = 
     match ls with
     | [] -> 0
     | x::xs -> 1 + length xs
 
-def sum (ls : [Int]) : Int =
+def sum (ls : [Int]) : Integer =
     match ls with
     | [] -> 0
     | x::xs -> x + sum xs
