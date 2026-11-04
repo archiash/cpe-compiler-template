@@ -26,10 +26,10 @@ rule read = parse
   | float_lit as f { FLOAT_LIT (float_of_string f) }
   | '#' [^ '\r' '\n' ]* { read lexbuf }
   | "(*" { read_comment lexbuf }
-  (* | "def" { DEF }
+  | "def" { DEF }
   | "data" { DATA }
   | "type" { TYPE }
-  | "import" { IMPORT } *)
+  | "import" { IMPORT }
   | "if" { IF }
   | "then" { THEN }
   | "else" { ELSE }
@@ -38,11 +38,11 @@ rule read = parse
   | "match" { MATCH }
   | "with" { WITH }
   (* | "as" { AS }
-  | "and" { AND }
+  | "and" { AND } *)
   | "Interger" { INTEGER }
   | "Bool" { BOOLEAN }
   | "Double" { FLOAT }
-  | "Char" { CHAR } *)
+  | "Char" { CHAR }
   | "True" { BOOL_LIT(true) }
   | "False" { BOOL_LIT(false) } 
   | "+" { PLUS }
@@ -77,7 +77,7 @@ rule read = parse
   | ":" { COLON }
   | "!" { EXCLAMATION } *)
   | ident as i { IDENT (i)}
-  (* | constructor as c { CONSTRUCTOR (c)} *)
+  | constructor as c { CONSTRUCTOR (c)}
   | '\'' (character as c) '\'' { CHAR_LIT c }
   | '\'' '\\' (_ as escape) '\'' { 
       let c = match escape with

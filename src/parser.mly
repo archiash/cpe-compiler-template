@@ -12,7 +12,7 @@ open Ast
 %token <bool> BOOL_LIT
 %token <string> STRING_LIT
 %token <string> IDENT
-// %token <string> CONSTRUCTOR
+%token <string> CONSTRUCTOR
 
 // symbol
 %token PLUS "+" TIMES "*"
@@ -29,19 +29,17 @@ open Ast
 //%token IMPLIES "=>"
 %token NOTEQUAL "!="
 %token ASSIGN "="
-// %token TRUE "True"
-// %token FALSE "False"
 // %token DOLLAR "$"
 
 // keyword
 %token DEF "def" 
-// %token DATA "data" TYPE "type" IMPORT "import"
+%token DATA "data" TYPE "type" IMPORT "import"
 %token IF "if" THEN "then" ELSE "else"
 %token LET "let" IN "in"
 // %token AS "as" AND "and"
 %token MATCH "match" WITH "with"
 
-// %token INTEGER "Integer" BOOLEAN "Bool" FLOAT "Double" CHAR "Char"
+%token INTEGER "Integer" BOOLEAN "Bool" FLOAT "Double" CHAR "Char"
 
 
 %token LBRACKET "[" RBRACKET "]"
