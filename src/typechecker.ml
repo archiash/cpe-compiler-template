@@ -293,6 +293,8 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
                     ^ ", but found " ^ string_of_type arg_ty ^ "\n");
                   None
             )
+          | Any ->
+              Some (App { r with prop = Any; func = func_prog; arg = arg_prog })
           | _ ->
               prerr_string
                 (string_of_positions r.pos
