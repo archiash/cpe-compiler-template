@@ -43,8 +43,8 @@ rule read = parse
   | "Bool" { BOOLEAN }
   | "Double" { FLOAT }
   | "Char" { CHAR } *)
-  | "True" { BOO_LIT(true) }
-  | "False" { BOO_LIT(false) } 
+  | "True" { BOOL_LIT(true) }
+  | "False" { BOOL_LIT(false) } 
   | "+" { PLUS }
   | "*" { TIMES }
   | "-" { MINUS }
