@@ -27,9 +27,9 @@ rule read = parse
   | '#' [^ '\r' '\n' ]* { read lexbuf }
   | "(*" { read_comment lexbuf }
   | "def" { DEF }
-  | "data" { DATA }
+  (* | "data" { DATA }
   | "type" { TYPE }
-  | "import" { IMPORT }
+  | "import" { IMPORT } *)
   | "if" { IF }
   | "then" { THEN }
   | "else" { ELSE }
@@ -68,16 +68,16 @@ rule read = parse
   | "->" { RARROW }
   | "|" { OR }
   | "_" { WILDCARD }
+  | ":" { COLON }
   (*
   | "\\" { BACKSLASH }
   | "=>" { IMPLIES }
   | "$" { DOLLAR }
   | "," { COMMA }
   | "." { DOT }
-  | ":" { COLON }
   | "!" { EXCLAMATION } *)
   | ident as i { IDENT (i)}
-  | constructor as c { CONSTRUCTOR (c)}
+  (* | constructor as c { CONSTRUCTOR (c)} *)
   | '\'' (character as c) '\'' { CHAR_LIT c }
   | '\'' '\\' (_ as escape) '\'' { 
       let c = match escape with
