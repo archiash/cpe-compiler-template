@@ -78,7 +78,6 @@ decl_list:
   | d = decl; ds = decl_list { d :: ds }
 
 param:
-  | id = IDENT { ParamUntyped id }
   | "("; ")" { ParamUnit }
   | "("; id = IDENT; ":"; t = typ; ")" { ParamTyped (id, t) }
 
@@ -89,10 +88,6 @@ param_list:
 nonempty_param_list:
   | p = param { [p] }
   | p = param; ps = nonempty_param_list { p :: ps }
-
-return_type:
-  | /* empty */ { None }
-  | ":"; t = typ { Some t }
 
 mod_name:
   | id = IDENT { id }
@@ -106,8 +101,8 @@ id_list:
 decl:
   | e = expr %prec DECL { e }
 
-  | "def"; id = IDENT; params = param_list; ret = return_type; "="; body = expr %prec DECL {
-      DefFuncTyped {
+  | "def"; id = IDENT; params = param_list; ":"; ret = typ; "="; body = expr %prec DECL {
+      DefFunc {
         prop = ();
         pos = $loc;
         name = id;
@@ -167,7 +162,7 @@ expr:
     }
 
   | "let"; bindings = let_bindings; "in"; body = expr {
-      LetBindings {
+      Let {
         prop = ();
         pos = $loc;
         bindings = bindings;
@@ -175,7 +170,7 @@ expr:
       }
     }
 
-  | "\\"; params = nonempty_param_list; ret = return_type; "=>"; body = expr {
+  | "\\"; params = nonempty_param_list; ":"; ret = typ; "=>"; body = expr {
       Lambda {
         prop = ();
         pos = $loc;
@@ -219,11 +214,11 @@ let_bindings:
   | b = let_binding; "and"; bs = let_bindings { b :: bs }
 
 let_binding:
-  | id = IDENT; params = param_list; ret = return_type; "="; e = expr {
-      if params = [] then
-        LetVarBind { name = id; return_type = ret; value = e }
-      else
-        LetFuncBind { name = id; params = params; return_type = ret; body = e }
+  | id = IDENT; "="; e = expr {
+      LetVarBind { name = id; value = e }
+    }
+  | id = IDENT; params = nonempty_param_list; ":"; ret = typ; "="; e = expr {
+      LetFuncBind { name = id; params = params; return_type = ret; body = e }
     }
 
 simple_pat:

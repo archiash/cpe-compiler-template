@@ -25,7 +25,6 @@ type 't typ =
 
 type 't param =
   | ParamUnit
-  | ParamUntyped of string
   | ParamTyped of string * 't typ
 
 type 't prog =
@@ -113,13 +112,6 @@ type 't prog =
   | Let of {
       prop : 't;
       pos : pos;
-      name : string;
-      value : 't prog;
-      body : 't prog;
-    }
-  | LetBindings of {
-      prop : 't;
-      pos : pos;
       bindings : 't let_binding list;
       body : 't prog;
     }
@@ -127,7 +119,7 @@ type 't prog =
       prop : 't;
       pos : pos;
       params : 't param list;
-      return_type : 't typ option;
+      return_type : 't typ;
       body : 't prog;
     }
   | Match of {
@@ -140,15 +132,8 @@ type 't prog =
       prop : 't;
       pos : pos;
       name : string;
-      args : string list;
-      body : 't prog;
-    }
-  | DefFuncTyped of {
-      prop : 't;
-      pos : pos;
-      name : string;
       params : 't param list;
-      return_type : 't typ option;
+      return_type : 't typ;
       body : 't prog;
     }
   | Import of {
@@ -180,13 +165,12 @@ type 't prog =
 and 't let_binding =
   | LetVarBind of {
       name : string;
-      return_type : 't typ option;
       value : 't prog;
     }
   | LetFuncBind of {
       name : string;
       params : 't param list;
-      return_type : 't typ option;
+      return_type : 't typ;
       body : 't prog;
     }
 
@@ -231,11 +215,9 @@ let prop_of_prog (prog : 't prog) : 't =
   | App r -> r.prop
   | If r -> r.prop
   | Let r -> r.prop
-  | LetBindings r -> r.prop
   | Lambda r -> r.prop
   | Match r -> r.prop
   | DefFunc r -> r.prop
-  | DefFuncTyped r -> r.prop
   | Import r -> r.prop
   | TypeDef r -> r.prop
   | DataDef r -> r.prop
@@ -254,7 +236,6 @@ let rec string_of_typ (t : 't typ) : string =
 let string_of_param (p : 't param) : string =
   match p with
   | ParamUnit -> "()"
-  | ParamUntyped id -> id
   | ParamTyped (id, t) -> "(" ^ id ^ " " ^ string_of_typ t ^ ")"
 
 let string_of_typedecl (name : string) (type_params : string list) : string =
@@ -301,50 +282,27 @@ let rec string_of_prog (prog : 't prog) : string =
   | If r ->
       "(if " ^ string_of_prog r.condition ^ " " ^ string_of_prog r.consequent ^ " " ^ string_of_prog r.alternative ^ ")"
   | Let r ->
-      "(let ((" ^ r.name ^ " " ^ string_of_prog r.value ^ ")) " ^ string_of_prog r.body ^ ")"
-  | LetBindings r ->
       let string_of_binding b =
         match b with
         | LetVarBind vb ->
             "(" ^ vb.name ^ " " ^ string_of_prog vb.value ^ ")"
         | LetFuncBind fb ->
             let params_str = "(" ^ String.concat " " (List.map string_of_param fb.params) ^ ")" in
-            let ret_str =
-              match fb.return_type with
-              | Some t -> " " ^ string_of_typ t
-              | None -> ""
-            in
-            "(" ^ fb.name ^ " " ^ params_str ^ ret_str ^ " " ^ string_of_prog fb.body ^ ")"
+            "(" ^ fb.name ^ " " ^ params_str ^ " " ^ string_of_typ fb.return_type ^ " " ^ string_of_prog fb.body ^ ")"
       in
       "(let (" ^ String.concat " " (List.map string_of_binding r.bindings) ^ ") " ^ string_of_prog r.body ^ ")"
   | Lambda r ->
       let params_str = "(" ^ String.concat " " (List.map string_of_param r.params) ^ ")" in
-      let ret_str =
-        match r.return_type with
-        | Some t -> " " ^ string_of_typ t
-        | None -> ""
-      in
-      "(\\ " ^ params_str ^ ret_str ^ " " ^ string_of_prog r.body ^ ")"
+      "(\\ " ^ params_str ^ " " ^ string_of_typ r.return_type ^ " " ^ string_of_prog r.body ^ ")"
   | Match r ->
       let string_of_case (p, e) = "(-> " ^ string_of_pat p ^ " " ^ string_of_prog e ^ ")" in
       "(match " ^ string_of_prog r.expr ^ " (" ^ String.concat " " (List.map string_of_case r.cases) ^ "))"
   | DefFunc r ->
       let params_str =
-        if r.args = [] then ""
-        else " (" ^ String.concat " " r.args ^ ")"
-      in
-      "(def " ^ r.name ^ params_str ^ " " ^ string_of_prog r.body ^ ")"
-  | DefFuncTyped r ->
-      let params_str =
         if r.params = [] then ""
         else " (" ^ String.concat " " (List.map string_of_param r.params) ^ ")"
       in
-      let ret_str =
-        match r.return_type with
-        | Some t -> " " ^ string_of_typ t
-        | None -> ""
-      in
-      "(def " ^ r.name ^ params_str ^ ret_str ^ " " ^ string_of_prog r.body ^ ")"
+      "(def " ^ r.name ^ params_str ^ " " ^ string_of_typ r.return_type ^ " " ^ string_of_prog r.body ^ ")"
   | Import r ->
       "(import " ^ r.path ^ (match r.alias with Some a -> " " ^ a | None -> "") ^ ")"
   | TypeDef r ->
