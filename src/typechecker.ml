@@ -256,7 +256,11 @@ let rec typecheck_pat (p : unit pat) (expected_ty : ty) : (ty pat * env) option 
       | List elem_ty ->
           let* (head_pat, env_h) = typecheck_pat r.head elem_ty in
           let* (tail_pat, env_t) = typecheck_pat r.tail expected_ty in
-          Some (PatCons { prop = expected_ty; pos = r.pos; head = head_pat; tail = tail_pat }, env_h @ env_t)
+          (match List.find_opt (fun (name, _) -> List.mem_assoc name env_t) env_h with
+           | Some (dup, _) ->
+               error_at r.pos ("variable '" ^ dup ^ "' is bound several times in this pattern")
+           | None ->
+               Some (PatCons { prop = expected_ty; pos = r.pos; head = head_pat; tail = tail_pat }, env_h @ env_t))
       | _ ->
           error_at r.pos ("expected pattern of type " ^ string_of_type expected_ty ^ ", but found cons pattern (::)")
     )
@@ -265,7 +269,11 @@ let rec typecheck_pat (p : unit pat) (expected_ty : ty) : (ty pat * env) option 
       | Pair (fst_ty, snd_ty) ->
           let* (fst_pat, env_f) = typecheck_pat r.fst fst_ty in
           let* (snd_pat, env_s) = typecheck_pat r.snd snd_ty in
-          Some (PatPair { prop = expected_ty; pos = r.pos; fst = fst_pat; snd = snd_pat }, env_f @ env_s)
+          (match List.find_opt (fun (name, _) -> List.mem_assoc name env_s) env_f with
+           | Some (dup, _) ->
+               error_at r.pos ("variable '" ^ dup ^ "' is bound several times in this pattern")
+           | None ->
+               Some (PatPair { prop = expected_ty; pos = r.pos; fst = fst_pat; snd = snd_pat }, env_f @ env_s))
       | _ ->
           error_at r.pos ("expected pattern of type " ^ string_of_type expected_ty ^ ", but found pair pattern")
     )
@@ -275,7 +283,11 @@ let rec typecheck_pat (p : unit pat) (expected_ty : ty) : (ty pat * env) option 
         | [] -> Some (List.rev acc_pats, acc_env)
         | p_i :: rest ->
             let* (typed_pi, env_i) = typecheck_pat p_i Any in
-            check_args rest (typed_pi :: acc_pats) (env_i @ acc_env)
+            (match List.find_opt (fun (name, _) -> List.mem_assoc name acc_env) env_i with
+             | Some (dup, _) ->
+                 error_at r.pos ("variable '" ^ dup ^ "' is bound several times in this pattern")
+             | None ->
+                 check_args rest (typed_pi :: acc_pats) (env_i @ acc_env))
       in
       let* (typed_args, env_args) = check_args r.args [] [] in
       Some (PatConstructor { prop = expected_ty; pos = r.pos; name = r.name; args = typed_args }, env_args)
