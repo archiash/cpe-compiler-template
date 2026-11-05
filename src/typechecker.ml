@@ -100,20 +100,19 @@ let type_of_binop (op : op) (left_ty : ty) (right_ty : ty) : (ty, string) result
   | Compose, Function (b1, c), Function (a, b2) -> (
       match types_match b1 b2 with
       | Some _ -> Ok (Function (a, c))
-      | _ -> Error "composable functions"
+      | None ->
+          Error ("incompatible types for composition (.): "
+                 ^ string_of_type b1 ^ " does not match " ^ string_of_type b2)
     )
-  | Compose, TypeVar _, Function (a, c) | Compose, Function (a, c), TypeVar _ ->
-      Ok (Function (a, c))
-  | Compose, TypeVar _, TypeVar _ ->
-      Ok (Function (TypeVar "a", TypeVar "b"))
-  | Compose, _, _ -> Error "function for composition (.)"
+  | Compose, _, _ -> Error "function composition (.) requires two functions"
 
   | Dollar, Function (param_ty, ret_ty), arg_ty -> (
       match types_match param_ty arg_ty with
       | Some _ -> Ok ret_ty
-      | None -> Error ("function parameter expected " ^ string_of_type param_ty ^ ", but found " ^ string_of_type arg_ty)
+      | None ->
+          Error ("function parameter expected " ^ string_of_type param_ty
+                 ^ ", but found " ^ string_of_type arg_ty)
     )
-  | Dollar, TypeVar _, _ -> Ok (TypeVar "a")
   | Dollar, _, _ -> Error "function on left side of ($)"
 
 let type_of_unop (op : unop) (operand_ty : ty) : (ty, string) result =
@@ -493,8 +492,6 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
                 error_at r.pos
                   ("function argument type mismatch: expected "
                    ^ string_of_type param_ty ^ ", but found " ^ string_of_type arg_ty))
-       | TypeVar ret ->
-           Some (App { r with prop = TypeVar ret; func = func_prog; arg = arg_prog })
        | _ ->
            error_at r.pos
              ("expected function type, but found " ^ string_of_type func_ty))
@@ -543,11 +540,13 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
         | [] -> Some cur_env
         | DefFuncTyped fr :: ds ->
             if not (validate_func_header_params fr.pos fr.name fr.params fr.return_type seen) then None
-            else if fr.params = [] then
-              pass1 cur_env (fr.name :: seen) ds
             else
               let fn_sig = fn_signature_params fr.params fr.return_type in
-              pass1 ((fr.name, fn_sig) :: cur_env) (fr.name :: seen) ds
+              (match fn_sig with
+               | Function _ ->
+                   pass1 ((fr.name, fn_sig) :: cur_env) (fr.name :: seen) ds
+               | _ ->
+                   pass1 cur_env (fr.name :: seen) ds)
         | DefFunc fr :: ds ->
             let fn_sig = Function (Any, Any) in
             pass1 ((fr.name, fn_sig) :: cur_env) (fr.name :: seen) ds
@@ -570,11 +569,13 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
         match items with
         | [] -> Some (List.rev acc)
         | DefFuncTyped fr :: ds ->
+            let fn_sig = fn_signature_params fr.params fr.return_type in
             let* typed_fr, next_env =
-              if fr.params = [] then
-                check_var_params cur_env fr.name fr.pos fr.params fr.return_type fr.body
-              else
-                check_func_params cur_env fr.name fr.pos fr.params fr.return_type fr.body
+              match fn_sig with
+              | Function _ ->
+                  check_func_params cur_env fr.name fr.pos fr.params fr.return_type fr.body
+              | _ ->
+                  check_var_params cur_env fr.name fr.pos fr.params fr.return_type fr.body
             in
             pass2 next_env ds (typed_fr :: acc)
         | DefFunc fr :: ds ->
