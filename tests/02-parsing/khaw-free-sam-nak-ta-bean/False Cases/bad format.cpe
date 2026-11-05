@@ -1,0 +1,4 @@
+import a as xs
+
+def main (arg:String) =
+  "Hello World"

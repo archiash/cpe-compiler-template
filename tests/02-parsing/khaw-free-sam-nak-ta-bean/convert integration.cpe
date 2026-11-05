@@ -1,0 +1,35 @@
+import pad_krapow as Khaw_Free_Samnak_Tabean
+
+def get (i : Integer) (arr : [a]) : a =
+  if i == 0 then match arr with
+    | x::xs -> x
+    | _ -> 0
+  else 
+    match arr with
+    | x::xs -> get (i-1) xs
+    | _ -> 0
+def int_to_str(num:Integer):String =
+    let unit = num % 10 in 
+      if num // 10 <= 0 then 
+      single_int_to_str num
+      else 
+      (int_to_str (num // 10)) :: (single_int_to_str (num % 10))
+
+def single_int_to_str(num:Integer):Char = 
+    match num with
+    | 0 -> '0'
+    | 1 -> '1'
+    | 2 -> '2'
+    | 3 -> '3'
+    | 4 -> '4'
+    | 5 -> '5'
+    | 6 -> '6'
+    | 7 -> '7'
+    | 8 -> '8'
+    | 9 -> '9'
+
+def main(arg:[String]):String = 
+    let x = 1::2::3::4::20::[] in
+    let value = get 3 x in
+    int_to_str value
+    
