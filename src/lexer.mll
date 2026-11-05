@@ -46,6 +46,7 @@ rule read = parse
   | "True" { BOOL_LIT(true) }
   | "False" { BOOL_LIT(false) } 
   | "+" { PLUS }
+  | "++" { PLUSPLUS }
   | "*" { TIMES }
   | "-" { MINUS }
   | "/" { DIV }
