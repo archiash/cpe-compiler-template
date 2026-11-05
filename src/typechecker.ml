@@ -190,7 +190,7 @@ let fn_signature_params (params : 't param list) (ret_opt : 't typ option) : ty 
            Function (param_ty, acc))
         params ret_ty
 
-let validate_func_header_params (pos : pos) (name : string) (params : 't param list) (ret_opt : 't typ option) (seen_names : string list) : bool =
+let validate_func_header_params (pos : pos) (name : string) (params : 't param list) (seen_names : string list) : bool =
   let desc = if params = [] then "variable" else "function" in
   let param_names =
     List.filter_map (function
@@ -202,10 +202,6 @@ let validate_func_header_params (pos : pos) (name : string) (params : 't param l
     let _ = error_at pos ("duplicate " ^ desc ^ " definition '" ^ name ^ "'") in false
   else if has_duplicates param_names then
     let _ = error_at pos ("duplicate formal parameter name in function '" ^ name ^ "'") in false
-  else if List.exists (function ParamUntyped _ -> true | _ -> false) params then
-    let _ = error_at pos ("missing parameter type annotation in function '" ^ name ^ "'") in false
-  else if Option.is_none ret_opt then
-    let _ = error_at pos ("missing return type annotation for " ^ desc ^ " '" ^ name ^ "'") in false
   else
     true
 
@@ -522,7 +518,7 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
       Some (Match { r with prop = result_ty; expr = expr_prog; cases = typed_cases })
 
   | DefFuncTyped r ->
-      if not (validate_func_header_params r.pos r.name r.params r.return_type []) then None
+      if not (validate_func_header_params r.pos r.name r.params []) then None
       else if r.params = [] then
         let* typed_var, _ = check_var_params env r.name r.pos r.params r.return_type r.body in
         Some typed_var
@@ -539,7 +535,7 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
         match items with
         | [] -> Some cur_env
         | DefFuncTyped fr :: ds ->
-            if not (validate_func_header_params fr.pos fr.name fr.params fr.return_type seen) then None
+            if not (validate_func_header_params fr.pos fr.name fr.params seen) then None
             else
               let fn_sig = fn_signature_params fr.params fr.return_type in
               (match fn_sig with

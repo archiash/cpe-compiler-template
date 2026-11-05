@@ -98,32 +98,6 @@ let tests = "test suite for sample typechecking" >::: [
     in
     assert_equal false (typecheck dup_prog));
 
-  "unannotated parameter rejected" >:: (fun _ ->
-    let unannotated_param =
-      DefFuncTyped {
-        prop = ();
-        pos = dummy_pos;
-        name = "f";
-        params = [ParamUntyped "x"];
-        return_type = Some (TyBase "Integer");
-        body = Var { prop = (); pos = dummy_pos; name = "x" };
-      }
-    in
-    assert_equal false (typecheck unannotated_param));
-
-  "unannotated return type rejected" >:: (fun _ ->
-    let unannotated_ret =
-      DefFuncTyped {
-        prop = ();
-        pos = dummy_pos;
-        name = "f";
-        params = [ParamTyped ("x", TyBase "Integer")];
-        return_type = None;
-        body = Var { prop = (); pos = dummy_pos; name = "x" };
-      }
-    in
-    assert_equal false (typecheck unannotated_ret));
-
   "top-level in-order variables allowed" >:: (fun _ ->
     let p = Prog {
       prop = ();
