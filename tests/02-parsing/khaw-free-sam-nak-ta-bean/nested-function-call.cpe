@@ -1,0 +1,5 @@
+def first (p : (a, b)) : a = 
+    match p with
+    | (x, _) -> x
+
+first (1, 2)

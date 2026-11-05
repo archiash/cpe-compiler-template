@@ -39,7 +39,6 @@ let rec string_of_type (t : ty) : string =
 let rec types_match (t1 : ty) (t2 : ty) : ty option =
   match t1, t2 with
   | Any, t | t, Any -> Some t
-  | TypeVar _, t | t, TypeVar _ -> Some t
   | List a, List b -> (
       match types_match a b with
       | Some elem -> Some (List elem)
