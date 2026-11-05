@@ -1,0 +1,2 @@
+def s : String = "line1\nline2\t\"quoted\"\\"
+def c : Char = '\n'

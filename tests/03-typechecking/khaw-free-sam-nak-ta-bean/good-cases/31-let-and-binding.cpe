@@ -1,0 +1,4 @@
+def val : Integer =
+    let a = 10
+    and b = 20
+    in a + b

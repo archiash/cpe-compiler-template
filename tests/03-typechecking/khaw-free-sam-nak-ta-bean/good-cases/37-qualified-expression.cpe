@@ -1,0 +1,2 @@
+def pi : Double = 3.14159
+def val : Double = Math ! pi

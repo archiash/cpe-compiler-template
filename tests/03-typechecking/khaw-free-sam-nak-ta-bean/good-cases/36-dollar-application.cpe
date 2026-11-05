@@ -1,0 +1,3 @@
+def double (x : Integer) : Integer = 2 * x
+def inc (x : Integer) : Integer = x + 1
+def val : Integer = double $ inc $ 10

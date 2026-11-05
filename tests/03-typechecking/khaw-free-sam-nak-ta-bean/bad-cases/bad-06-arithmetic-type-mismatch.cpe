@@ -1,0 +1,1 @@
+def val : Integer = 10 + True

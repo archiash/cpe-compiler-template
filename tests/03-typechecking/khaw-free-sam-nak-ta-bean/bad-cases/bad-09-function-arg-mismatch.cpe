@@ -1,0 +1,2 @@
+def inc (x : Integer) : Integer = x + 1
+def val : Integer = inc "hello"

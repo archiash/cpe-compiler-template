@@ -1,0 +1,1 @@
+def val : Bool = 42 == 42

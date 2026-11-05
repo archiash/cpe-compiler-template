@@ -1,0 +1,2 @@
+def t : Bool = True
+def f : Bool = False

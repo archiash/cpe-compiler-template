@@ -1,0 +1,2 @@
+def max (a : Integer) (b : Integer) : Integer =
+    if a > b then a else b

@@ -1,0 +1,4 @@
+def isA (c : Char) : Bool =
+    match c with
+    | 'a' -> True
+    | _ -> False

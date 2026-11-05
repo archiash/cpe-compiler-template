@@ -1,0 +1,2 @@
+def addOne : Integer -> Integer = \ (x : Integer) : Integer => x + 1
+def val : Integer = addOne 41

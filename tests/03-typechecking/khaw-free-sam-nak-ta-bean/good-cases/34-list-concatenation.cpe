@@ -1,0 +1,6 @@
+def concat (xs : [Integer]) (ys : [Integer]) : [Integer] =
+    match xs with
+    | [] -> ys
+    | x :: rest -> x :: concat rest ys
+
+def val : [Integer] = concat (1 :: 2 :: []) (3 :: 4 :: [])

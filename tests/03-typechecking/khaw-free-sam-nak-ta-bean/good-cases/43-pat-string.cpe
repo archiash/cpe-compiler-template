@@ -1,0 +1,4 @@
+def greet (name : String) : String =
+    match name with
+    | "Alice" -> "Hello, Alice!"
+    | _ -> "Hello, stranger!"

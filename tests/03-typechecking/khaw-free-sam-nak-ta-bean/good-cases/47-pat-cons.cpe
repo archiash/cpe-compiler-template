@@ -1,0 +1,4 @@
+def headOrDefault (defVal : Integer) (ls : [Integer]) : Integer =
+    match ls with
+    | x :: xs -> x
+    | [] -> defVal

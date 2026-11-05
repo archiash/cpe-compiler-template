@@ -1,0 +1,3 @@
+def val : Integer =
+    let x = 10
+    in x + 5

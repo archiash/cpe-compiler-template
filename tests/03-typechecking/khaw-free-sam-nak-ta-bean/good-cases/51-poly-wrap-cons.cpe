@@ -1,0 +1,5 @@
+def f (x : a) : [a] = x::[]
+
+def g (x : [Integer]) : [Integer] = 67::x
+
+def val : [[[Integer]]] = let x = [] in (f (g x)) :: x

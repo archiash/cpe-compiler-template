@@ -1,0 +1,4 @@
+def unpack (p : ([Integer], (Integer, Bool))) : Integer =
+    match p with
+    | (x :: xs, (y, True)) -> x + y
+    | _ -> 0

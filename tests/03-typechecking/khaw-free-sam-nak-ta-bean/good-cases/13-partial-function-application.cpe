@@ -1,0 +1,3 @@
+def multiply (x : Integer) (y : Integer) : Integer = x * y
+def triple : Integer -> Integer = multiply 3
+def val : Integer = triple 7

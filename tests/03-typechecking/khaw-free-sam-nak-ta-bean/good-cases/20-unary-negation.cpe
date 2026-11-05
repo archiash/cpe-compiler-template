@@ -1,0 +1,2 @@
+def a : Integer = -42
+def b : Double = -3.14

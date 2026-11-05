@@ -1,0 +1,2 @@
+def square (x : Integer) : Integer = x * x
+def val : Integer = square 9

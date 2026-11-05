@@ -1,0 +1,5 @@
+def first (p : (Integer, Integer)) : Integer =
+    match p with
+    | (x, _) -> x
+
+def val : Integer = first (first (first (1, 2), 2), 2)

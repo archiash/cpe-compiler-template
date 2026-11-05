@@ -1,0 +1,3 @@
+def sumPair (p : (Integer, Integer)) : Integer =
+    match p with
+    | (x, y) -> x + y

@@ -1,0 +1,4 @@
+def f (x : Integer) : Integer =
+    match x with
+    | True -> 1
+    | _ -> 0

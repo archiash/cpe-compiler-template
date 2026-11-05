@@ -1,0 +1,2 @@
+def baseValue : Integer = 10
+def derivedValue2 : Integer = baseValue

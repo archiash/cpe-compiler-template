@@ -1,0 +1,4 @@
+def isOrigin (x : Double) : Bool =
+    match x with
+    | 0.0 -> True
+    | _ -> False

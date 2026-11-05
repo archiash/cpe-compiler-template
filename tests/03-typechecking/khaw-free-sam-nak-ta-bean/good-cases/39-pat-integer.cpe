@@ -1,0 +1,4 @@
+def isZero (x : Integer) : Bool =
+    match x with
+    | 0 -> True
+    | _ -> False

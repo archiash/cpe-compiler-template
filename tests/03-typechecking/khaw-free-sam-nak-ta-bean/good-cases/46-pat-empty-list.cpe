@@ -1,0 +1,4 @@
+def isEmpty (ls : [Integer]) : Bool =
+    match ls with
+    | [] -> True
+    | _ -> False

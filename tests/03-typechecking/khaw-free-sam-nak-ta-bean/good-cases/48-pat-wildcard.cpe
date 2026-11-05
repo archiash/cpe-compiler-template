@@ -1,0 +1,3 @@
+def const42 (x : Integer) : Integer =
+    match x with
+    | _ -> 42

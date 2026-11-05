@@ -1,0 +1,3 @@
+def handleUnit (u : ()) : Integer =
+    match u with
+    | () -> 42

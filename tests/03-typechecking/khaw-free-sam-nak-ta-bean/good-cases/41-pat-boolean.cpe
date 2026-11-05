@@ -1,0 +1,4 @@
+def invert (b : Bool) : Bool =
+    match b with
+    | True -> False
+    | False -> True

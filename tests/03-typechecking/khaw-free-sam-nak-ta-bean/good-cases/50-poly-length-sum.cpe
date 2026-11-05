@@ -1,0 +1,12 @@
+def length (ls : [a]) : Integer =
+    match ls with
+    | [] -> 0
+    | x::xs -> 1 + length xs
+
+def sum (ls : [Integer]) : Integer =
+    match ls with
+    | [] -> 0
+    | x::xs -> x + sum xs
+
+def func : Integer =
+    let x = [] in sum (1::2::x) + length (True::False::x)
