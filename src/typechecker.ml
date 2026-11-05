@@ -139,11 +139,9 @@ let pos_of_prog (p : 't prog) : pos =
   | App r -> r.pos
   | If r -> r.pos
   | Let r -> r.pos
-  | LetBindings r -> r.pos
   | Lambda r -> r.pos
   | Match r -> r.pos
   | DefFunc r -> r.pos
-  | DefFuncTyped r -> r.pos
   | Import r -> r.pos
   | TypeDef r -> r.pos
   | DataDef r -> r.pos
@@ -171,11 +169,9 @@ let has_duplicates (lst : string list) : bool =
   in
   check [] lst
 
-let fn_signature_params (params : 't param list) (ret_opt : 't typ option) : ty =
-  let ret_ty = match ret_opt with 
-    | Some t -> ty_of_typ t 
-    | None -> Unit 
-  in match params with
+let fn_signature_params (params : 't param list) (ret_typ : 't typ) : ty =
+  let ret_ty = ty_of_typ ret_typ in
+  match params with
   | [] -> ret_ty
   | [ParamUnit] -> Function (Unit, ret_ty)
   | _ ->
@@ -184,7 +180,6 @@ let fn_signature_params (params : 't param list) (ret_opt : 't typ option) : ty 
            let param_ty =
              match p with
              | ParamUnit -> Unit
-             | ParamUntyped _ -> Any
              | ParamTyped (_, t) -> ty_of_typ t
            in
            Function (param_ty, acc))
@@ -195,7 +190,7 @@ let validate_func_header_params (pos : pos) (name : string) (params : 't param l
   let param_names =
     List.filter_map (function
       | ParamUnit -> None
-      | ParamUntyped s | ParamTyped (s, _) -> Some s
+      | ParamTyped (s, _) -> Some s
     ) params
   in
   if List.mem name seen_names then
@@ -367,13 +362,6 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
               ^ string_of_type alt_ty))
 
   | Let r ->
-      let* value_prog = typecheck_with_env env r.value in
-      let value_ty = prop_of_prog value_prog in
-      let body_env = (r.name, value_ty) :: env in
-      let* body_prog = typecheck_with_env body_env r.body in
-      Some (Let { r with prop = prop_of_prog body_prog; value = value_prog; body = body_prog })
-
-  | LetBindings r ->
       let rec collect_sigs bindings acc =
         match bindings with
         | [] -> acc
@@ -391,71 +379,52 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
         | LetVarBind vb :: rest ->
             let* typed_val = typecheck_with_env env vb.value in
             let val_ty = prop_of_prog typed_val in
-            let* final_ty =
-              match vb.return_type with
-              | Some ret_t ->
-                  let expected = ty_of_typ ret_t in
-                  (match types_match val_ty expected with
-                   | Some u -> Some u
-                   | None ->
-                       error_at (pos_of_prog vb.value)
-                         ("expected type " ^ string_of_type expected ^ ", but found " ^ string_of_type val_ty))
-              | None -> Some val_ty
-            in
-            let typed_vb = LetVarBind { vb with value = typed_val; return_type = Obj.magic vb.return_type } in
-            check_bindings rest (typed_vb :: acc_bindings) ((vb.name, final_ty) :: acc_env)
+            let typed_vb = LetVarBind { name = vb.name; value = typed_val } in
+            check_bindings rest (typed_vb :: acc_bindings) ((vb.name, val_ty) :: acc_env)
         | LetFuncBind fb :: rest ->
             let param_bindings =
               List.filter_map (function
                 | ParamUnit -> None
-                | ParamUntyped name -> Some (name, TypeVar name)
                 | ParamTyped (name, typ) -> Some (name, ty_of_typ typ)
               ) fb.params
             in
             let fb_env = param_bindings @ body_scope_env in
             let* typed_body = typecheck_with_env fb_env fb.body in
             let body_ty = prop_of_prog typed_body in
+            let expected = ty_of_typ fb.return_type in
             let* _ =
-              match fb.return_type with
-              | Some ret_t ->
-                  let expected = ty_of_typ ret_t in
-                  (match types_match body_ty expected with
-                   | Some u -> Some u
-                   | None ->
-                       error_at (pos_of_prog fb.body)
-                         ("expected return type " ^ string_of_type expected ^ ", but found " ^ string_of_type body_ty))
-              | None -> Some body_ty
+              match types_match body_ty expected with
+              | Some u -> Some u
+              | None ->
+                  error_at (pos_of_prog fb.body)
+                    ("expected return type " ^ string_of_type expected ^ ", but found " ^ string_of_type body_ty)
             in
             let fn_ty = fn_signature_params fb.params fb.return_type in
-            let typed_fb = LetFuncBind { fb with body = typed_body; params = Obj.magic fb.params; return_type = Obj.magic fb.return_type } in
+            let typed_fb = LetFuncBind { name = fb.name; params = Obj.magic fb.params; return_type = Obj.magic fb.return_type; body = typed_body } in
             check_bindings rest (typed_fb :: acc_bindings) ((fb.name, fn_ty) :: acc_env)
       in
       let* (typed_bindings, new_env) = check_bindings r.bindings [] env in
       let* typed_body = typecheck_with_env (new_env @ fn_env @ env) r.body in
-      Some (LetBindings { r with prop = prop_of_prog typed_body; bindings = typed_bindings; body = typed_body })
+      Some (Let { r with prop = prop_of_prog typed_body; bindings = typed_bindings; body = typed_body })
 
   | Lambda r ->
       let param_bindings =
         List.filter_map (function
           | ParamUnit -> None
-          | ParamUntyped name -> Some (name, TypeVar name)
           | ParamTyped (name, typ) -> Some (name, ty_of_typ typ)
         ) r.params
       in
       let body_env = param_bindings @ env in
       let* typed_body = typecheck_with_env body_env r.body in
       let body_ty = prop_of_prog typed_body in
+      let expected_ret = ty_of_typ r.return_type in
       let* final_ret_ty =
-        match r.return_type with
-        | Some ret_typ ->
-            let expected_ret = ty_of_typ ret_typ in
-            (match types_match body_ty expected_ret with
-             | Some unified -> Some unified
-             | None ->
-                 error_at r.pos
-                   ("expected lambda return type " ^ string_of_type expected_ret
-                    ^ ", but body has type " ^ string_of_type body_ty))
-        | None -> Some body_ty
+        match types_match body_ty expected_ret with
+        | Some unified -> Some unified
+        | None ->
+            error_at r.pos
+              ("expected lambda return type " ^ string_of_type expected_ret
+               ^ ", but body has type " ^ string_of_type body_ty)
       in
       let lam_ty =
         match r.params with
@@ -466,7 +435,6 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
                  let p_ty =
                    match p with
                    | ParamUnit -> Unit
-                   | ParamUntyped _ -> Any
                    | ParamTyped (_, t) -> ty_of_typ t
                  in
                  Function (p_ty, acc))
@@ -517,7 +485,7 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
       let* (typed_cases, result_ty) = check_cases r.cases in
       Some (Match { r with prop = result_ty; expr = expr_prog; cases = typed_cases })
 
-  | DefFuncTyped r ->
+  | DefFunc r ->
       if not (validate_func_header_params r.pos r.name r.params []) then None
       else if r.params = [] then
         let* typed_var, _ = check_var_params env r.name r.pos r.params r.return_type r.body in
@@ -526,15 +494,11 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
         let* typed_fn, _ = check_func_params env r.name r.pos r.params r.return_type r.body in
         Some typed_fn
 
-  | DefFunc r ->
-      let* typed_body = typecheck_with_env env r.body in
-      Some (DefFunc { r with prop = prop_of_prog typed_body; body = typed_body })
-
   | Prog r ->
       let rec pass1 cur_env seen items =
         match items with
         | [] -> Some cur_env
-        | DefFuncTyped fr :: ds ->
+        | DefFunc fr :: ds ->
             if not (validate_func_header_params fr.pos fr.name fr.params seen) then None
             else
               let fn_sig = fn_signature_params fr.params fr.return_type in
@@ -543,9 +507,6 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
                    pass1 ((fr.name, fn_sig) :: cur_env) (fr.name :: seen) ds
                | _ ->
                    pass1 cur_env (fr.name :: seen) ds)
-        | DefFunc fr :: ds ->
-            let fn_sig = Function (Any, Any) in
-            pass1 ((fr.name, fn_sig) :: cur_env) (fr.name :: seen) ds
         | DataDef dr :: ds ->
             let res_ty =
               match dr.type_params with
@@ -564,7 +525,7 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
       let rec pass2 cur_env items acc =
         match items with
         | [] -> Some (List.rev acc)
-        | DefFuncTyped fr :: ds ->
+        | DefFunc fr :: ds ->
             let fn_sig = fn_signature_params fr.params fr.return_type in
             let* typed_fr, next_env =
               match fn_sig with
@@ -574,10 +535,6 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
                   check_var_params cur_env fr.name fr.pos fr.params fr.return_type fr.body
             in
             pass2 next_env ds (typed_fr :: acc)
-        | DefFunc fr :: ds ->
-            let* typed_body = typecheck_with_env cur_env fr.body in
-            let typed_fr = DefFunc { fr with prop = prop_of_prog typed_body; body = typed_body } in
-            pass2 cur_env ds (typed_fr :: acc)
         | DataDef dr :: ds ->
             let res_ty =
               match dr.type_params with
@@ -617,12 +574,11 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
 
 and check_func_params (env : env) (name : string) (pos : pos)
                       (params : unit param list)
-                      (return_type : unit typ option)
+                      (return_type : unit typ)
                       (body : unit prog) : (ty prog * env) option =
   let param_bindings =
     List.filter_map (function
       | ParamUnit -> None
-      | ParamUntyped n -> Some (n, TypeVar n)
       | ParamTyped (n, t) -> Some (n, ty_of_typ t)
     ) params
   in
@@ -630,17 +586,14 @@ and check_func_params (env : env) (name : string) (pos : pos)
   let body_env = (name, self_sig) :: (param_bindings @ env) in
   let* typed_body = typecheck_with_env body_env body in
   let body_ret_ty = prop_of_prog typed_body in
+  let expected_ty = ty_of_typ return_type in
   let* final_ret_ty =
-    match return_type with
-    | Some expected_typ ->
-        let expected_ty = ty_of_typ expected_typ in
-        (match types_match body_ret_ty expected_ty with
-         | Some unified -> Some unified
-         | None ->
-             error_at pos
-               ("expected function return type " ^ string_of_type expected_ty
-                ^ ", but body has type " ^ string_of_type body_ret_ty))
-    | None -> Some body_ret_ty
+    match types_match body_ret_ty expected_ty with
+    | Some unified -> Some unified
+    | None ->
+        error_at pos
+          ("expected function return type " ^ string_of_type expected_ty
+           ^ ", but body has type " ^ string_of_type body_ret_ty)
   in
   let fn_ty =
     match params with
@@ -652,13 +605,12 @@ and check_func_params (env : env) (name : string) (pos : pos)
              let p_ty =
                match p with
                | ParamUnit -> Unit
-               | ParamUntyped _ -> Any
                | ParamTyped (_, t) -> ty_of_typ t
              in
              Function (p_ty, acc))
           params final_ret_ty
   in
-  let typed_fn = DefFuncTyped {
+  let typed_fn = DefFunc {
     prop = fn_ty;
     pos;
     name;
@@ -670,23 +622,20 @@ and check_func_params (env : env) (name : string) (pos : pos)
 
 and check_var_params (env : env) (name : string) (pos : pos)
                      (params : unit param list)
-                     (return_type : unit typ option)
+                     (return_type : unit typ)
                      (body : unit prog) : (ty prog * env) option =
   let* typed_body = typecheck_with_env env body in
   let body_ty = prop_of_prog typed_body in
+  let expected_ty = ty_of_typ return_type in
   let* final_ty =
-    match return_type with
-    | Some expected_typ ->
-        let expected_ty = ty_of_typ expected_typ in
-        (match types_match body_ty expected_ty with
-         | Some unified -> Some unified
-         | None ->
-             error_at pos
-               ("expected variable type " ^ string_of_type expected_ty
-                ^ ", but body has type " ^ string_of_type body_ty))
-    | None -> Some body_ty
+    match types_match body_ty expected_ty with
+    | Some unified -> Some unified
+    | None ->
+        error_at pos
+          ("expected variable type " ^ string_of_type expected_ty
+           ^ ", but body has type " ^ string_of_type body_ty)
   in
-  let typed_var = DefFuncTyped {
+  let typed_var = DefFunc {
     prop = final_ty;
     pos;
     name;
