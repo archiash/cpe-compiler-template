@@ -21,6 +21,130 @@ type ty =
   | TypeVar of string
   | TypeApp of ty * ty
 
+let is_type_var_name (s : string) : bool =
+  String.length s > 0 && s.[0] >= 'a' && s.[0] <= 'z'
+
+type scheme = {
+  vars : string list;
+  body : ty;
+}
+
+let mono (t : ty) : scheme = { vars = []; body = t }
+
+type env = (string * scheme) list
+
+type subst = (string * ty) list
+
+let free_type_vars (t : ty) : string list =
+  let rec collect acc = function
+    | TypeVar s when is_type_var_name s ->
+        if List.mem s acc then acc else s :: acc
+    | List elem -> collect acc elem
+    | Pair (t1, t2) | Function (t1, t2) | TypeApp (t1, t2) ->
+        collect (collect acc t1) t2
+    | _ -> acc
+  in
+  List.rev (collect [] t)
+
+let free_in_scheme (s : scheme) : string list =
+  List.filter (fun v -> not (List.mem v s.vars)) (free_type_vars s.body)
+
+let free_in_env (env : env) : string list =
+  List.fold_left (fun acc (_, s) ->
+    List.fold_left (fun a v -> if List.mem v a then a else v :: a) acc (free_in_scheme s)
+  ) [] env
+
+let generalize (env : env) (t : ty) : scheme =
+  let env_free = free_in_env env in
+  let vars = List.filter (fun v -> not (List.mem v env_free)) (free_type_vars t) in
+  { vars; body = t }
+
+let rec apply_subst (s : subst) (t : ty) : ty =
+  match t with
+  | Int | Float | Bool | Char | String | Unit | Any as t0 -> t0
+  | TypeVar name when is_type_var_name name -> (
+      match List.assoc_opt name s with
+      | Some (TypeVar v) when v = name -> t
+      | Some replacement -> apply_subst s replacement
+      | None -> t
+    )
+  | TypeVar _ as t0 -> t0
+  | List elem -> List (apply_subst s elem)
+  | Pair (t1, t2) -> Pair (apply_subst s t1, apply_subst s t2)
+  | Function (t1, t2) -> Function (apply_subst s t1, apply_subst s t2)
+  | TypeApp (t1, t2) -> TypeApp (apply_subst s t1, apply_subst s t2)
+
+let freshen_counter = ref 0
+
+let freshen_type (t : ty) : ty =
+  let mapping = ref [] in
+  let rec freshen = function
+    | Int | Float | Bool | Char | String | Unit | Any as t0 -> t0
+    | TypeVar name when is_type_var_name name -> (
+        match List.assoc_opt name !mapping with
+        | Some fresh_name -> TypeVar fresh_name
+        | None ->
+            incr freshen_counter;
+            let fresh_name = Printf.sprintf "%s_%d" name !freshen_counter in
+            mapping := (name, fresh_name) :: !mapping;
+            TypeVar fresh_name
+      )
+    | TypeVar _ as t0 -> t0
+    | List elem -> List (freshen elem)
+    | Pair (t1, t2) -> Pair (freshen t1, freshen t2)
+    | Function (t1, t2) -> Function (freshen t1, freshen t2)
+    | TypeApp (t1, t2) -> TypeApp (freshen t1, freshen t2)
+  in
+  freshen t
+
+let instantiate (s : scheme) : ty =
+  match s.vars with
+  | [] -> s.body
+  | vars ->
+      let mapping = List.map (fun v ->
+        incr freshen_counter;
+        (v, TypeVar (Printf.sprintf "%s_%d" v !freshen_counter))
+      ) vars in
+      apply_subst mapping s.body
+
+let rec occurs (name : string) (t : ty) : bool =
+  match t with
+  | TypeVar v when v = name -> true
+  | List elem -> occurs name elem
+  | Pair (t1, t2) | Function (t1, t2) | TypeApp (t1, t2) ->
+      occurs name t1 || occurs name t2
+  | _ -> false
+
+let rec unify (s : subst) (t1 : ty) (t2 : ty) : subst option =
+  let t1 = apply_subst s t1 in
+  let t2 = apply_subst s t2 in
+  match t1, t2 with
+  | Any, _ | _, Any -> Some s
+  | _ when t1 = t2 -> Some s
+  | TypeVar v1, t when is_type_var_name v1 ->
+      bind_var s v1 t
+  | t, TypeVar v2 when is_type_var_name v2 ->
+      bind_var s v2 t
+  | List a, List b ->
+      unify s a b
+  | Pair (a1, b1), Pair (a2, b2) ->
+      let* s1 = unify s a1 a2 in
+      unify s1 b1 b2
+  | Function (a1, b1), Function (a2, b2) ->
+      let* s1 = unify s a1 a2 in
+      unify s1 b1 b2
+  | TypeApp (a1, b1), TypeApp (a2, b2) ->
+      let* s1 = unify s a1 a2 in
+      unify s1 b1 b2
+  | _ -> None
+
+and bind_var (s : subst) (v : string) (t : ty) : subst option =
+  match t with
+  | TypeVar v2 when v = v2 -> Some s
+  | _ ->
+      if occurs v t then None
+      else Some ((v, t) :: s)
+
 let rec string_of_type (t : ty) : string =
   match t with
   | Int -> "int"
@@ -39,7 +163,6 @@ let rec string_of_type (t : ty) : string =
 let rec types_match (t1 : ty) (t2 : ty) : ty option =
   match t1, t2 with
   | Any, t | t, Any -> Some t
-  | TypeVar _, t | t, TypeVar _ -> Some t
   | List a, List b -> (
       match types_match a b with
       | Some elem -> Some (List elem)
@@ -84,22 +207,35 @@ let type_of_binop (op : op) (left_ty : ty) (right_ty : ty) : (ty, string) result
   | (LOr | LAnd | Lt | Leq | Gt | Geq), _, _ -> Error "bool"
 
   | Cons, elem_ty, List list_elem_ty -> (
-      match types_match elem_ty list_elem_ty with
-      | Some res -> Ok (List res)
+      match unify [] elem_ty list_elem_ty with
+      | Some subst ->
+          let res = apply_subst subst elem_ty in
+          let final_res = match res with Any -> apply_subst subst list_elem_ty | _ -> res in
+          Ok (List final_res)
       | None -> Error ("list of " ^ string_of_type elem_ty)
     )
   | Cons, elem_ty, _ -> Error ("list of " ^ string_of_type elem_ty)
   | Concat, String, String -> Ok String
   | Concat, List l1, List l2 -> (
-      match types_match l1 l2 with
-      | Some res -> Ok (List res)
+      match unify [] l1 l2 with
+      | Some subst ->
+          let res = apply_subst subst l1 in
+          let final_res = match res with Any -> apply_subst subst l2 | _ -> res in
+          Ok (List final_res)
       | None -> Error "matching list"
     )
   | Concat, _, _ -> Error "string"  
 
   | Compose, Function (b1, c), Function (a, b2) -> (
-      match types_match b1 b2 with
-      | Some _ -> Ok (Function (a, c))
+      let fresh_left = freshen_type (Function (b1, c)) in
+      let fresh_right = freshen_type (Function (a, b2)) in
+      let (b1', c') = match fresh_left with Function (p, r) -> (p, r) | _ -> (b1, c) in
+      let (a', b2') = match fresh_right with Function (p, r) -> (p, r) | _ -> (a, b2) in
+      match unify [] b1' b2' with
+      | Some subst ->
+          let res_param = apply_subst subst a' in
+          let res_ret = apply_subst subst c' in
+          Ok (Function (res_param, res_ret))
       | None ->
           Error ("incompatible types for composition (.): "
                  ^ string_of_type b1 ^ " does not match " ^ string_of_type b2)
@@ -107,8 +243,10 @@ let type_of_binop (op : op) (left_ty : ty) (right_ty : ty) : (ty, string) result
   | Compose, _, _ -> Error "function composition (.) requires two functions"
 
   | Dollar, Function (param_ty, ret_ty), arg_ty -> (
-      match types_match param_ty arg_ty with
-      | Some _ -> Ok ret_ty
+      let fresh_fn = freshen_type (Function (param_ty, ret_ty)) in
+      let (p', r') = match fresh_fn with Function (p, r) -> (p, r) | _ -> (param_ty, ret_ty) in
+      match unify [] p' arg_ty with
+      | Some subst -> Ok (apply_subst subst r')
       | None ->
           Error ("function parameter expected " ^ string_of_type param_ty
                  ^ ", but found " ^ string_of_type arg_ty)
@@ -173,7 +311,7 @@ let fn_signature_params (params : 't param list) (ret_typ : 't typ) : ty =
   let ret_ty = ty_of_typ ret_typ in
   match params with
   | [] -> ret_ty
-  | [ParamUnit] -> Function (Unit, ret_ty)
+  | ParamUnit::[] -> Function (Unit, ret_ty)
   | _ ->
       List.fold_right
         (fun p acc ->
@@ -185,8 +323,7 @@ let fn_signature_params (params : 't param list) (ret_typ : 't typ) : ty =
            Function (param_ty, acc))
         params ret_ty
 
-let validate_func_header_params (pos : pos) (name : string) (params : 't param list) (seen_names : string list) : bool =
-  let desc = if params = [] then "variable" else "function" in
+let validate_func_signature (pos : pos) (name : string) (params : 't param list) (seen_names : string list) : bool =
   let param_names =
     List.filter_map (function
       | ParamUnit -> None
@@ -194,18 +331,16 @@ let validate_func_header_params (pos : pos) (name : string) (params : 't param l
     ) params
   in
   if List.mem name seen_names then
-    let _ = error_at pos ("duplicate " ^ desc ^ " definition '" ^ name ^ "'") in false
+    let _ = error_at pos ("duplicate definition of '" ^ name ^ "'") in false
   else if has_duplicates param_names then
     let _ = error_at pos ("duplicate formal parameter name in function '" ^ name ^ "'") in false
   else
     true
 
-type env = (string * ty) list
-
 let initial_env : env = [
-  ("error", Function (String, TypeVar "a"));
-  ("ord", Function (Char, Int));
-  ("chr", Function (Int, Char));
+  ("error", { vars = ["a"]; body = Function (String, TypeVar "a") });
+  ("ord", mono (Function (Char, Int)));
+  ("chr", mono (Function (Int, Char)));
 ]
 
 let check_lit_pat (pos : pos) (expected_ty : ty) (lit_ty : ty) (desc : string) (construct : ty -> ty pat) : (ty pat * env) option =
@@ -219,7 +354,7 @@ let rec typecheck_pat (p : unit pat) (expected_ty : ty) : (ty pat * env) option 
   | PatWildcard r ->
       Some (PatWildcard { prop = expected_ty; pos = r.pos }, [])
   | PatVar r ->
-      Some (PatVar { prop = expected_ty; pos = r.pos; name = r.name }, [(r.name, expected_ty)])
+      Some (PatVar { prop = expected_ty; pos = r.pos; name = r.name }, [(r.name, mono expected_ty)])
   | PatInt r ->
       check_lit_pat r.pos expected_ty Int "int pattern"
         (fun prop -> PatInt { prop; pos = r.pos; value = r.value })
@@ -251,6 +386,14 @@ let rec typecheck_pat (p : unit pat) (expected_ty : ty) : (ty pat * env) option 
                error_at r.pos ("variable '" ^ dup ^ "' is bound several times in this pattern")
            | None ->
                Some (PatCons { prop = expected_ty; pos = r.pos; head = head_pat; tail = tail_pat }, env_h @ env_t))
+      | Any ->
+          let* (head_pat, env_h) = typecheck_pat r.head Any in
+          let* (tail_pat, env_t) = typecheck_pat r.tail (List Any) in
+          (match List.find_opt (fun (name, _) -> List.mem_assoc name env_t) env_h with
+           | Some (dup, _) ->
+               error_at r.pos ("variable '" ^ dup ^ "' is bound several times in this pattern")
+           | None ->
+               Some (PatCons { prop = List Any; pos = r.pos; head = head_pat; tail = tail_pat }, env_h @ env_t))
       | _ ->
           error_at r.pos ("expected pattern of type " ^ string_of_type expected_ty ^ ", but found cons pattern (::)")
     )
@@ -264,6 +407,14 @@ let rec typecheck_pat (p : unit pat) (expected_ty : ty) : (ty pat * env) option 
                error_at r.pos ("variable '" ^ dup ^ "' is bound several times in this pattern")
            | None ->
                Some (PatPair { prop = expected_ty; pos = r.pos; fst = fst_pat; snd = snd_pat }, env_f @ env_s))
+      | Any ->
+          let* (fst_pat, env_f) = typecheck_pat r.fst Any in
+          let* (snd_pat, env_s) = typecheck_pat r.snd Any in
+          (match List.find_opt (fun (name, _) -> List.mem_assoc name env_s) env_f with
+           | Some (dup, _) ->
+               error_at r.pos ("variable '" ^ dup ^ "' is bound several times in this pattern")
+           | None ->
+               Some (PatPair { prop = Pair (Any, Any); pos = r.pos; fst = fst_pat; snd = snd_pat }, env_f @ env_s))
       | _ ->
           error_at r.pos ("expected pattern of type " ^ string_of_type expected_ty ^ ", but found pair pattern")
     )
@@ -300,20 +451,26 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
 
   | Var r -> (
       match List.assoc_opt r.name env with
-      | Some ty -> Some (Var { r with prop = ty })
+      | Some scheme ->
+          let inst_ty = instantiate scheme in
+          Some (Var { r with prop = inst_ty })
       | None -> error_at r.pos ("'" ^ r.name ^ "' is not defined")
     )
 
   | Constructor r -> (
       match List.assoc_opt r.name env with
-      | Some ty -> Some (Constructor { r with prop = ty })
+      | Some scheme ->
+          let inst_ty = instantiate scheme in
+          Some (Constructor { r with prop = inst_ty })
       | None -> Some (Constructor { r with prop = TypeVar r.name })
     )
 
   | Namespace r ->
       let* ns_prog = typecheck_with_env env r.ns in
       (match List.assoc_opt r.member env with
-       | Some ty -> Some (Namespace { r with prop = ty; ns = ns_prog })
+       | Some scheme ->
+           let inst_ty = instantiate scheme in
+           Some (Namespace { r with prop = inst_ty; ns = ns_prog })
        | None -> Some (Namespace { r with prop = TypeVar r.member; ns = ns_prog }))
 
   | BinExpr r ->
@@ -367,25 +524,27 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
         | [] -> acc
         | LetFuncBind fb :: bs ->
             let fn_sig = fn_signature_params fb.params fb.return_type in
-            collect_sigs bs ((fb.name, fn_sig) :: acc)
+            let scheme = generalize env fn_sig in
+            collect_sigs bs ((fb.name, scheme) :: acc)
         | LetVarBind _ :: bs ->
             collect_sigs bs acc
       in
-      let fn_env = collect_sigs r.bindings [] in
-      let body_scope_env = fn_env @ env in
+      let bindings_env = collect_sigs r.bindings [] in
+      let body_scope_env = bindings_env @ env in
       let rec check_bindings bs acc_bindings acc_env =
         match bs with
         | [] -> Some (List.rev acc_bindings, acc_env)
         | LetVarBind vb :: rest ->
             let* typed_val = typecheck_with_env env vb.value in
             let val_ty = prop_of_prog typed_val in
+            let scheme = generalize env val_ty in
             let typed_vb = LetVarBind { name = vb.name; value = typed_val } in
-            check_bindings rest (typed_vb :: acc_bindings) ((vb.name, val_ty) :: acc_env)
+            check_bindings rest (typed_vb :: acc_bindings) ((vb.name, scheme) :: acc_env)
         | LetFuncBind fb :: rest ->
             let param_bindings =
               List.filter_map (function
                 | ParamUnit -> None
-                | ParamTyped (name, typ) -> Some (name, ty_of_typ typ)
+                | ParamTyped (name, typ) -> Some (name, mono (ty_of_typ typ))
               ) fb.params
             in
             let fb_env = param_bindings @ body_scope_env in
@@ -400,18 +559,19 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
                     ("expected return type " ^ string_of_type expected ^ ", but found " ^ string_of_type body_ty)
             in
             let fn_ty = fn_signature_params fb.params fb.return_type in
+            let scheme = generalize env fn_ty in
             let typed_fb = LetFuncBind { name = fb.name; params = Obj.magic fb.params; return_type = Obj.magic fb.return_type; body = typed_body } in
-            check_bindings rest (typed_fb :: acc_bindings) ((fb.name, fn_ty) :: acc_env)
+            check_bindings rest (typed_fb :: acc_bindings) ((fb.name, scheme) :: acc_env)
       in
       let* (typed_bindings, new_env) = check_bindings r.bindings [] env in
-      let* typed_body = typecheck_with_env (new_env @ fn_env @ env) r.body in
+      let* typed_body = typecheck_with_env (new_env @ bindings_env @ env) r.body in
       Some (Let { r with prop = prop_of_prog typed_body; bindings = typed_bindings; body = typed_body })
 
   | Lambda r ->
       let param_bindings =
         List.filter_map (function
           | ParamUnit -> None
-          | ParamTyped (name, typ) -> Some (name, ty_of_typ typ)
+          | ParamTyped (name, typ) -> Some (name, mono (ty_of_typ typ))
         ) r.params
       in
       let body_env = param_bindings @ env in
@@ -449,9 +609,10 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
       let arg_ty = prop_of_prog arg_prog in
       (match func_ty with
        | Function (param_ty, ret_ty) ->
-           (match types_match param_ty arg_ty with
-            | Some _ ->
-                Some (App { r with prop = ret_ty; func = func_prog; arg = arg_prog })
+           (match unify [] param_ty arg_ty with
+            | Some subst ->
+                let final_ret = apply_subst subst ret_ty in
+                Some (App { r with prop = final_ret; func = func_prog; arg = arg_prog })
             | None ->
                 error_at r.pos
                   ("function argument type mismatch: expected "
@@ -486,7 +647,7 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
       Some (Match { r with prop = result_ty; expr = expr_prog; cases = typed_cases })
 
   | DefFunc r ->
-      if not (validate_func_header_params r.pos r.name r.params []) then None
+      if not (validate_func_signature r.pos r.name r.params []) then None
       else if r.params = [] then
         let* typed_var, _ = check_var_params env r.name r.pos r.params r.return_type r.body in
         Some typed_var
@@ -499,12 +660,13 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
         match items with
         | [] -> Some cur_env
         | DefFunc fr :: ds ->
-            if not (validate_func_header_params fr.pos fr.name fr.params seen) then None
+            if not (validate_func_signature fr.pos fr.name fr.params seen) then None
             else
               let fn_sig = fn_signature_params fr.params fr.return_type in
+              let scheme = generalize cur_env fn_sig in
               (match fn_sig with
                | Function _ ->
-                   pass1 ((fr.name, fn_sig) :: cur_env) (fr.name :: seen) ds
+                   pass1 ((fr.name, scheme) :: cur_env) (fr.name :: seen) ds
                | _ ->
                    pass1 cur_env (fr.name :: seen) ds)
         | DataDef dr :: ds ->
@@ -516,7 +678,8 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
             let ctor_bindings =
               List.map (fun (cname, cargs) ->
                 let cty = List.fold_right (fun t acc -> Function (ty_of_typ t, acc)) cargs res_ty in
-                (cname, cty)
+                let scheme = generalize cur_env cty in
+                (cname, scheme)
               ) dr.constructors
             in
             pass1 (ctor_bindings @ cur_env) seen ds
@@ -544,7 +707,8 @@ let rec typecheck_with_env (env : env) (p : unit prog) : ty prog option =
             let ctor_bindings =
               List.map (fun (cname, cargs) ->
                 let cty = List.fold_right (fun t acc -> Function (ty_of_typ t, acc)) cargs res_ty in
-                (cname, cty)
+                let scheme = generalize cur_env cty in
+                (cname, scheme)
               ) dr.constructors
             in
             let typed_dr = DataDef { dr with prop = Unit; constructors = Obj.magic dr.constructors } in
@@ -579,11 +743,12 @@ and check_func_params (env : env) (name : string) (pos : pos)
   let param_bindings =
     List.filter_map (function
       | ParamUnit -> None
-      | ParamTyped (n, t) -> Some (n, ty_of_typ t)
+      | ParamTyped (n, t) -> Some (n, mono (ty_of_typ t))
     ) params
   in
   let self_sig = fn_signature_params params return_type in
-  let body_env = (name, self_sig) :: (param_bindings @ env) in
+  let self_scheme = generalize env self_sig in
+  let body_env = (name, self_scheme) :: (param_bindings @ env) in
   let* typed_body = typecheck_with_env body_env body in
   let body_ret_ty = prop_of_prog typed_body in
   let expected_ty = ty_of_typ return_type in
@@ -618,7 +783,7 @@ and check_func_params (env : env) (name : string) (pos : pos)
     return_type = Obj.magic return_type;
     body = typed_body;
   } in
-  Some (typed_fn, (name, fn_ty) :: env)
+  Some (typed_fn, (name, generalize env fn_ty) :: env)
 
 and check_var_params (env : env) (name : string) (pos : pos)
                      (params : unit param list)
@@ -643,7 +808,7 @@ and check_var_params (env : env) (name : string) (pos : pos)
     return_type = Obj.magic return_type;
     body = typed_body;
   } in
-  Some (typed_var, (name, final_ty) :: env)
+  Some (typed_var, (name, generalize env final_ty) :: env)
 
 let typecheck_prog (p : unit prog) : ty prog option =
   typecheck_with_env initial_env p
