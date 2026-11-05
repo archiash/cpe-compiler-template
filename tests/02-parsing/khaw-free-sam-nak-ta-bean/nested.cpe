@@ -1,0 +1,5 @@
+def f(x:a) : a =
+  match x with
+  | y -> y
+
+f 1
